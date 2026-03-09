@@ -57,6 +57,10 @@ function App() {
     setAccessToken(null);
     setEvents([]);
     setCalendars([]);
+    setSelectedCalendars(['primary']);
+    setCalendarAssignments({});
+    setPeopleDB([]);
+    setCurrentDate(new Date());
     localStorage.clear();
   };
 
