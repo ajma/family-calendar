@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAttendeeColor } from './components/AttendeeAvatar';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
@@ -71,6 +72,31 @@ function App() {
       
       // format events to match what the UI expects if needed
       setEvents(data);
+
+      // Extract unique attendees and save to localStorage
+      const peopleMap = new Map();
+      const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
+      existingPeople.forEach(person => peopleMap.set(person.email, person));
+
+      data.forEach(event => {
+        if (event.attendees) {
+          event.attendees.forEach(attendee => {
+            if (attendee.email && !peopleMap.has(attendee.email)) {
+              const name = attendee.displayName || attendee.email;
+              const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              peopleMap.set(attendee.email, {
+                name: name,
+                initials: initials,
+                email: attendee.email,
+                color: getAttendeeColor(attendee)
+              });
+            }
+          });
+        }
+      });
+      
+      localStorage.setItem('people', JSON.stringify(Array.from(peopleMap.values())));
+
     } catch (error) {
       console.error('Failed to load events', error);
       if (error.message.includes('401') || error.message.includes('403')) {
