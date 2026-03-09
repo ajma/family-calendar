@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getAttendeeColor } from './components/AttendeeAvatar';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
@@ -77,6 +76,12 @@ function App() {
       const peopleMap = new Map();
       const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
       existingPeople.forEach(person => peopleMap.set(person.email, person));
+      
+      const predefinedColors = [
+        '#2f81f7', '#bc8cff', '#3fb950', '#d29922', '#f778ba', 
+        '#ff7b72', '#1f6feb', '#8957e5', '#2ea043', '#f0883e',
+        '#d861ce', '#f85149', '#58a6ff', '#d2a8ff', '#3fb950'
+      ];
 
       data.forEach(event => {
         if (event.attendees) {
@@ -84,11 +89,21 @@ function App() {
             if (attendee.email && !peopleMap.has(attendee.email)) {
               const name = attendee.displayName || attendee.email;
               const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              
+              // Find a color that hasn't been used yet, or fallback to hashing if we run out
+              const usedColors = Array.from(peopleMap.values()).map(p => p.color);
+              let newColor = predefinedColors.find(c => !usedColors.includes(c));
+              
+              if (!newColor) {
+                 // Fallback: Generate a random hex if palette is exhausted
+                 newColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+              }
+
               peopleMap.set(attendee.email, {
                 name: name,
                 initials: initials,
                 email: attendee.email,
-                color: getAttendeeColor(attendee)
+                color: newColor
               });
             }
           });
