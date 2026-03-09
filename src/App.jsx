@@ -3,6 +3,7 @@ import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
 import AttendeeEditor from './components/AttendeeEditor';
+import CalendarSelectorModal from './components/CalendarSelectorModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
@@ -15,11 +16,19 @@ function App() {
   });
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  const [selectedCalendar, setSelectedCalendar] = useState(localStorage.getItem('selected_calendar') || 'primary');
+  const [selectedCalendars, setSelectedCalendars] = useState(() => {
+    try {
+      const saved = localStorage.getItem('selected_calendars');
+      return saved ? JSON.parse(saved) : ['primary'];
+    } catch {
+      return ['primary'];
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
   const [peopleDB, setPeopleDB] = useState([]);
 
   const login = useGoogleLogin({
@@ -71,7 +80,7 @@ function App() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      const data = await fetchEvents(accessToken, selectedCalendar, startOfWeek.toISOString(), endOfWeek.toISOString());
+      const data = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString());
 
       // format events to match what the UI expects if needed
       setEvents(data);
@@ -136,7 +145,7 @@ function App() {
     if (accessToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, selectedCalendar]);
+  }, [currentDate, accessToken, selectedCalendars]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -165,6 +174,11 @@ function App() {
     setEvents([...events]);
   };
 
+  const handleSaveCalendars = (newSelection) => {
+    setSelectedCalendars(newSelection);
+    localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
+  };
+
   return (
     <div className="app-container glass">
       <header className="app-header">
@@ -181,18 +195,7 @@ function App() {
 
         <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
           {accessToken && calendars.length > 0 && (
-            <select
-              value={selectedCalendar}
-              onChange={(e) => {
-                setSelectedCalendar(e.target.value);
-                localStorage.setItem('selected_calendar', e.target.value);
-              }}
-              style={{ padding: '0.5rem', borderRadius: '6px', cursor: 'pointer', background: 'var(--surface-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none', marginRight: '1rem', maxWidth: '300px' }}
-            >
-              {calendars.map(cal => (
-                <option key={cal.id} value={cal.id}>{cal.summary}</option>
-              ))}
-            </select>
+            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsCalendarSelectorOpen(true)}>Select Calendars</button>
           )}
 
           {accessToken && (
@@ -230,6 +233,14 @@ function App() {
         onClose={() => setIsEditorOpen(false)}
         people={peopleDB}
         onSave={handleSaveAttendees}
+      />
+
+      <CalendarSelectorModal
+        isOpen={isCalendarSelectorOpen}
+        onClose={() => setIsCalendarSelectorOpen(false)}
+        calendars={calendars}
+        selectedCalendars={selectedCalendars}
+        onSave={handleSaveCalendars}
       />
     </div>
   );
