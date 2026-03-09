@@ -29,7 +29,13 @@ const EventCard = ({ event }) => {
   } else {
     // Remove duplicates to keep gradient clean if repeating colors
     const colors = Array.from(new Set(attendees.map(a => getAttendeeColor(a.email))));
-    borderIndicatorStyle = { background: colors.length > 1 ? `linear-gradient(to bottom, ${colors.join(', ')})` : colors[0] };
+    if (colors.length > 1) {
+      const step = 100 / colors.length;
+      const gradientStops = colors.map((c, i) => `${c} ${i * step}%, ${c} ${(i + 1) * step}%`).join(', ');
+      borderIndicatorStyle = { background: `linear-gradient(to bottom, ${gradientStops})` };
+    } else {
+      borderIndicatorStyle = { background: colors[0] };
+    }
   }
 
   return (
