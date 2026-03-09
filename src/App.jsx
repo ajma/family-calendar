@@ -36,7 +36,7 @@ function App() {
     setAccessToken(null);
     setEvents([]);
     setCalendars([]);
-    localStorage.removeItem('oauth_token');
+    localStorage.clear();
   };
 
   const loadCalendars = async () => {
