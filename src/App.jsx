@@ -7,7 +7,10 @@ import './index.css';
 import './styles/calendar.css';
 
 function App() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const savedDate = localStorage.getItem('selected_date');
+    return savedDate ? new Date(savedDate) : new Date();
+  });
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
   const [selectedCalendar, setSelectedCalendar] = useState(localStorage.getItem('selected_calendar') || 'primary');
@@ -98,16 +101,20 @@ function App() {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() - 7);
     setCurrentDate(newDate);
+    localStorage.setItem('selected_date', newDate.toISOString());
   };
 
   const handleNextWeek = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + 7);
     setCurrentDate(newDate);
+    localStorage.setItem('selected_date', newDate.toISOString());
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    localStorage.setItem('selected_date', today.toISOString());
   };
 
   return (
