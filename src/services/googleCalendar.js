@@ -87,6 +87,11 @@ export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMi
     const seenIds = new Set();
     
     for (const event of mergedEvents) {
+      // Discard private events
+      if (event.visibility === 'private') {
+        continue;
+      }
+
       if (!seenIds.has(event.id)) {
         seenIds.add(event.id);
         uniqueEvents.push(event);
