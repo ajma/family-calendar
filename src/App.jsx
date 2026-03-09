@@ -220,7 +220,7 @@ function App() {
   return (
     <div className="app-container glass">
       <header className="app-header">
-        <h1>Calendar<span className="highlight-text">Sync</span></h1>
+        <h1>Family <span className="highlight-text">Calendar</span></h1>
 
         {accessToken && (
           <CalendarHeader
