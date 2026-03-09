@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
+import AttendeeEditor from './components/AttendeeEditor';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
+import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
 import './styles/calendar.css';
 
@@ -17,6 +19,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [peopleDB, setPeopleDB] = useState([]);
 
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
@@ -51,24 +55,24 @@ function App() {
 
   const loadEvents = async () => {
     if (!accessToken) return;
-    
+
     setLoading(true);
     setErrorMSG(null);
     try {
       // Calculate start and end of week relative to currentDate
       const dayOfWeek = currentDate.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      
+
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() + mondayOffset);
       startOfWeek.setHours(0, 0, 0, 0);
-      
+
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
       const data = await fetchEvents(accessToken, selectedCalendar, startOfWeek.toISOString(), endOfWeek.toISOString());
-      
+
       // format events to match what the UI expects if needed
       setEvents(data);
 
@@ -76,12 +80,6 @@ function App() {
       const peopleMap = new Map();
       const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
       existingPeople.forEach(person => peopleMap.set(person.email, person));
-      
-      const predefinedColors = [
-        '#2f81f7', '#bc8cff', '#3fb950', '#d29922', '#f778ba', 
-        '#ff7b72', '#1f6feb', '#8957e5', '#2ea043', '#f0883e',
-        '#d861ce', '#f85149', '#58a6ff', '#d2a8ff', '#3fb950'
-      ];
 
       data.forEach(event => {
         if (event.attendees) {
@@ -89,14 +87,14 @@ function App() {
             if (attendee.email && !peopleMap.has(attendee.email)) {
               const name = attendee.displayName || attendee.email;
               const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-              
+
               // Find a color that hasn't been used yet, or fallback to hashing if we run out
               const usedColors = Array.from(peopleMap.values()).map(p => p.color);
-              let newColor = predefinedColors.find(c => !usedColors.includes(c));
-              
+              let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
+
               if (!newColor) {
-                 // Fallback: Generate a random hex if palette is exhausted
-                 newColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                // Fallback: Generate a random hex if palette is exhausted
+                newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
               }
 
               peopleMap.set(attendee.email, {
@@ -109,17 +107,19 @@ function App() {
           });
         }
       });
-      
-      localStorage.setItem('people', JSON.stringify(Array.from(peopleMap.values())));
+
+      const newPeopleDB = Array.from(peopleMap.values());
+      localStorage.setItem('people', JSON.stringify(newPeopleDB));
+      setPeopleDB(newPeopleDB);
 
     } catch (error) {
       console.error('Failed to load events', error);
       if (error.message.includes('401') || error.message.includes('403')) {
-         // Token might be expired
-         logout();
-         setErrorMSG('Session expired. Please log in again.');
+        // Token might be expired
+        logout();
+        setErrorMSG('Session expired. Please log in again.');
       } else {
-         setErrorMSG(error.message);
+        setErrorMSG(error.message);
       }
     } finally {
       setLoading(false);
@@ -158,29 +158,36 @@ function App() {
     localStorage.setItem('selected_date', today.toISOString());
   };
 
+  const handleSaveAttendees = (updatedPeople) => {
+    localStorage.setItem('people', JSON.stringify(updatedPeople));
+    setPeopleDB(updatedPeople);
+    // Force a re-render of events to reflect new colors/initials
+    setEvents([...events]);
+  };
+
   return (
     <div className="app-container glass">
       <header className="app-header">
         <h1>Calendar<span className="highlight-text">Sync</span></h1>
-        
+
         {accessToken && (
-          <CalendarHeader 
-            currentDate={currentDate} 
-            onPrev={handlePrevWeek} 
+          <CalendarHeader
+            currentDate={currentDate}
+            onPrev={handlePrevWeek}
             onNext={handleNextWeek}
             onToday={handleToday}
           />
         )}
 
-        <div className="auth-controls" style={{display: 'flex', alignItems: 'center'}}>
+        <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
           {accessToken && calendars.length > 0 && (
-            <select 
-              value={selectedCalendar} 
+            <select
+              value={selectedCalendar}
               onChange={(e) => {
                 setSelectedCalendar(e.target.value);
                 localStorage.setItem('selected_calendar', e.target.value);
               }}
-              style={{ padding: '0.5rem', borderRadius: '6px', cursor: 'pointer', background: 'var(--surface-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none', marginRight: '1rem', maxWidth: '300px'}}
+              style={{ padding: '0.5rem', borderRadius: '6px', cursor: 'pointer', background: 'var(--surface-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none', marginRight: '1rem', maxWidth: '300px' }}
             >
               {calendars.map(cal => (
                 <option key={cal.id} value={cal.id}>{cal.summary}</option>
@@ -188,31 +195,42 @@ function App() {
             </select>
           )}
 
+          {accessToken && (
+            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsEditorOpen(true)}>Edit Attendees</button>
+          )}
+
           {accessToken ? (
             <button className="control-btn" onClick={logout}>Sign Out</button>
           ) : (
-            <button className="control-btn" style={{background: 'var(--accent-blue)', color: 'white', border: 'none'}} onClick={() => login()}>Sign In with Google</button>
+            <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
           )}
         </div>
       </header>
-      
+
       <main className="app-main">
         {errorMSG && (
-          <div className="error-message" style={{color: '#ff7b72', textAlign: 'center', marginBottom: '1rem', background: 'rgba(255,123,114,0.1)', padding: '1rem', borderRadius: '8px'}}>
-             {errorMSG}
+          <div className="error-message" style={{ color: '#ff7b72', textAlign: 'center', marginBottom: '1rem', background: 'rgba(255,123,114,0.1)', padding: '1rem', borderRadius: '8px' }}>
+            {errorMSG}
           </div>
         )}
 
         {!accessToken ? (
-          <div className="empty-state" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'}}>
-             Please sign in to view your calendar events.
+          <div className="empty-state" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+            Please sign in to view your calendar events.
           </div>
         ) : loading ? (
-          <div className="loading-state glass" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>Loading your schedule...</div>
+          <div className="loading-state glass" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading your schedule...</div>
         ) : (
           <WeekGrid currentDate={currentDate} events={events} />
         )}
       </main>
+
+      <AttendeeEditor
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        people={peopleDB}
+        onSave={handleSaveAttendees}
+      />
     </div>
   );
 }
