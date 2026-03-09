@@ -1,6 +1,6 @@
-# CalendarSync
+# Family Calendar
 
-CalendarSync is a helpful web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view. 
+Family Calendar is a helpful web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view. 
 
 ## Features
 
