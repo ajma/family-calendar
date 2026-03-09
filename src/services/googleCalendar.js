@@ -92,6 +92,11 @@ export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMi
         continue;
       }
 
+      // Discard ignored events
+      if (event.description && event.description.includes('#ignore')) {
+        continue;
+      }
+
       if (!seenIds.has(event.id)) {
         seenIds.add(event.id);
         uniqueEvents.push(event);
