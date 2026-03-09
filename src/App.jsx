@@ -65,6 +65,18 @@ function App() {
     try {
       const data = await fetchCalendars(accessToken);
       setCalendars(data);
+      
+      const primaryCal = data.find(c => c.primary);
+      if (primaryCal) {
+        setSelectedCalendars(prev => {
+          if (prev.includes('primary')) {
+            const newSelection = prev.map(id => id === 'primary' ? primaryCal.id : id);
+            localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
+            return newSelection;
+          }
+          return prev;
+        });
+      }
     } catch (error) {
       console.error('Failed to load calendars', error);
     }
