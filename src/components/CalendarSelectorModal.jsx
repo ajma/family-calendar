@@ -16,6 +16,14 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
       if (prev.includes(calendarId)) {
         return prev.filter(id => id !== calendarId);
       } else {
+        // Auto-assign person if calendarId matches a person's email
+        const personMatch = people.find(p => p.email === calendarId);
+        if (personMatch) {
+          setLocalAssignments(prevAssignments => ({
+            ...prevAssignments,
+            [calendarId]: personMatch.email
+          }));
+        }
         return [...prev, calendarId];
       }
     });
