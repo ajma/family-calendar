@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, onSave }) => {
+const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, calendarAssignments = {}, people = [], onSave }) => {
   const [localSelection, setLocalSelection] = useState([]);
+  const [localAssignments, setLocalAssignments] = useState({});
 
   useEffect(() => {
     if (isOpen) {
       setLocalSelection([...selectedCalendars]);
+      setLocalAssignments({ ...calendarAssignments });
     }
-  }, [isOpen, selectedCalendars]);
+  }, [isOpen, selectedCalendars, calendarAssignments]);
 
   const handleToggle = (calendarId) => {
     setLocalSelection(prev => {
@@ -19,8 +21,20 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
     });
   };
 
+  const handleAssignPerson = (calendarId, email) => {
+    setLocalAssignments(prev => {
+      const updated = { ...prev };
+      if (!email) {
+        delete updated[calendarId];
+      } else {
+        updated[calendarId] = email;
+      }
+      return updated;
+    });
+  };
+
   const handleSave = () => {
-    onSave(localSelection);
+    onSave(localSelection, localAssignments);
     onClose();
   };
 
@@ -72,11 +86,35 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                     accentColor: 'var(--accent-blue)'
                   }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                  <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                    {cal.summaryOverride || cal.summary}
+                  <div style={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {cal.summaryOverride || cal.summary}
+                    </div>
+                    {localSelection.includes(cal.id) && people.length > 0 && (
+                      <select
+                        value={localAssignments[cal.id] || ''}
+                        onChange={(e) => handleAssignPerson(cal.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          marginLeft: '1rem',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--surface-color)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem',
+                          maxWidth: '150px'
+                        }}
+                      >
+                        <option value="">-- No Auto Attendee --</option>
+                        {people.map(p => (
+                          <option key={p.email} value={p.email}>
+                            {p.name || p.email}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                </div>
                 </div>
               </label>
             ))

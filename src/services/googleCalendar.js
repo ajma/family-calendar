@@ -72,7 +72,7 @@ export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMi
     }
 
     const data = await response.json();
-    return data.items || [];
+    return (data.items || []).map(event => ({ ...event, _calendarId: calId }));
   };
 
   try {

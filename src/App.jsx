@@ -24,6 +24,14 @@ function App() {
       return ['primary'];
     }
   });
+  const [calendarAssignments, setCalendarAssignments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_assignments');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
@@ -80,17 +88,33 @@ function App() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      const data = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString());
+      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString());
+
+      // Read existing people to use for assignment
+      const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
+
+      // Auto-assign attendees based on calendar assignments
+      eventsData = eventsData.map(event => {
+        const assignedEmail = calendarAssignments[event._calendarId];
+        if (assignedEmail) {
+          const person = existingPeople.find(p => p.email === assignedEmail);
+          const attendees = event.attendees ? [...event.attendees] : [];
+          if (person && !attendees.some(a => a.email === assignedEmail)) {
+            attendees.push({ email: person.email, displayName: person.name || person.email, responseStatus: 'accepted' });
+            return { ...event, attendees };
+          }
+        }
+        return event;
+      });
 
       // format events to match what the UI expects if needed
-      setEvents(data);
+      setEvents(eventsData);
 
       // Extract unique attendees and save to localStorage
       const peopleMap = new Map();
-      const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
       existingPeople.forEach(person => peopleMap.set(person.email, person));
 
-      data.forEach(event => {
+      eventsData.forEach(event => {
         if (event.attendees) {
           event.attendees.forEach(attendee => {
             if (attendee.email && !peopleMap.has(attendee.email)) {
@@ -145,7 +169,7 @@ function App() {
     if (accessToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, selectedCalendars]);
+  }, [currentDate, accessToken, selectedCalendars, calendarAssignments]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -174,9 +198,11 @@ function App() {
     setEvents([...events]);
   };
 
-  const handleSaveCalendars = (newSelection) => {
+  const handleSaveCalendars = (newSelection, newAssignments) => {
     setSelectedCalendars(newSelection);
+    setCalendarAssignments(newAssignments);
     localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
+    localStorage.setItem('calendar_assignments', JSON.stringify(newAssignments));
   };
 
   return (
@@ -240,6 +266,8 @@ function App() {
         onClose={() => setIsCalendarSelectorOpen(false)}
         calendars={calendars}
         selectedCalendars={selectedCalendars}
+        calendarAssignments={calendarAssignments}
+        people={peopleDB}
         onSave={handleSaveCalendars}
       />
     </div>
