@@ -46,11 +46,11 @@ const EventCard = ({ event }) => {
 
       {attendees.length > 0 && (
         <div className="event-attendees">
-          {attendees.slice(0, 5).map((attendee, index) => (
+          {attendees.slice(0, 6).map((attendee, index) => (
             <AttendeeAvatar key={index} attendee={attendee} index={index} />
           ))}
-          {attendees.length > 5 && (
-            <div className="attendee-overflow">+{attendees.length - 5}</div>
+          {attendees.length > 6 && (
+            <div className="attendee-overflow">+{attendees.length - 6}</div>
           )}
         </div>
       )}
