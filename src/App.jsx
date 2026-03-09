@@ -10,7 +10,7 @@ function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  const [selectedCalendar, setSelectedCalendar] = useState('primary');
+  const [selectedCalendar, setSelectedCalendar] = useState(localStorage.getItem('selected_calendar') || 'primary');
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
@@ -128,7 +128,10 @@ function App() {
           {accessToken && calendars.length > 0 && (
             <select 
               value={selectedCalendar} 
-              onChange={(e) => setSelectedCalendar(e.target.value)}
+              onChange={(e) => {
+                setSelectedCalendar(e.target.value);
+                localStorage.setItem('selected_calendar', e.target.value);
+              }}
               style={{ padding: '0.5rem', borderRadius: '6px', cursor: 'pointer', background: 'var(--surface-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none', marginRight: '1rem', maxWidth: '300px'}}
             >
               {calendars.map(cal => (
