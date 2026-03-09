@@ -11,13 +11,13 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
       const nameA = a.name || a.email || '';
       const nameB = b.name || b.email || '';
       return nameA.localeCompare(nameB);
-    });
+    }).map(p => ({ ...p, _id: p.email + Math.random() })); // Add internal ID for stable keys
     setLocalPeople(sortedPeople);
   }, [people]);
 
-  const handleChange = (email, field, value) => {
+  const handleChange = (id, field, value) => {
     setLocalPeople(prev => prev.map(p => {
-      if (p.email === email) {
+      if (p._id === id) {
         const updated = { ...p, [field]: value };
         if (field === 'initials') {
           updated.initials = value.toUpperCase().substring(0, 2);
@@ -28,8 +28,28 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
     }));
   };
 
+  const handleAddPerson = () => {
+    const usedColors = localPeople.map(p => p.color);
+    let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
+    if (!newColor) {
+      newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    }
+    
+    setLocalPeople([
+      {
+        _id: 'new_' + Math.random(),
+        name: 'New Person',
+        email: '',
+        initials: 'NP',
+        color: newColor
+      },
+      ...localPeople
+    ]);
+  };
+
   const handleSaveAll = () => {
-    onSave(localPeople);
+    const dataToSave = localPeople.map(({ _id, ...rest }) => rest);
+    onSave(dataToSave);
     onClose();
   };
 
@@ -38,10 +58,13 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content glass">
-        <h2>Edit Attendees</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+          <h2 style={{ padding: 0, border: 'none', margin: 0 }}>Edit Attendees</h2>
+          <button onClick={handleAddPerson} className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>+ Add Person</button>
+        </div>
         <div className="attendee-list">
           {localPeople.map(person => (
-            <div key={person.email} className="attendee-list-item editing" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid var(--border-color)' }}>
+            <div key={person._id} className="attendee-list-item editing" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid var(--border-color)' }}>
 
               <div className="attendee-edit-form" style={{ 
                 marginTop: 0, 
@@ -64,12 +87,16 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
                         type="text"
                         value={person.name}
                         placeholder="Display Name"
-                        onChange={(e) => handleChange(person.email, 'name', e.target.value)}
+                        onChange={(e) => handleChange(person._id, 'name', e.target.value)}
                         style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.85rem' }}
                       />
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', paddingLeft: '0.25rem' }}>
-                        {person.email}
-                      </div>
+                      <input
+                        type="email"
+                        value={person.email}
+                        placeholder="Email Address"
+                        onChange={(e) => handleChange(person._id, 'email', e.target.value)}
+                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.75rem', color: 'var(--text-secondary)' }}
+                      />
                     </div>
                     
                     {/* Initials & Avatar Column */}
@@ -79,7 +106,7 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
                         maxLength="2"
                         value={person.initials}
                         placeholder="Initials"
-                        onChange={(e) => handleChange(person.email, 'initials', e.target.value)}
+                        onChange={(e) => handleChange(person._id, 'initials', e.target.value)}
                         style={{ width: '45px', textTransform: 'uppercase', textAlign: 'center', padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.85rem' }}
                       />
                       <div style={{ 
@@ -104,7 +131,7 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
                     {AVATAR_ICON_COLORS.map(color => (
                       <div
                         key={color}
-                        onClick={() => handleChange(person.email, 'color', color)}
+                        onClick={() => handleChange(person._id, 'color', color)}
                         style={{
                           width: '20px', height: '20px', borderRadius: '50%', backgroundColor: color, cursor: 'pointer',
                           border: person.color === color ? '2px solid var(--text-primary)' : '1px solid transparent',
