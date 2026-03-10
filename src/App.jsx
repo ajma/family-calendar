@@ -4,6 +4,7 @@ import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
 import AttendeeEditor from './components/AttendeeEditor';
 import CalendarSelectorModal from './components/CalendarSelectorModal';
+import DebugModal from './components/DebugModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
@@ -46,6 +47,15 @@ function App() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
   const [peopleDB, setPeopleDB] = useState([]);
+  const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('debug') === '1') {
+      setIsDebugMode(true);
+    }
+  }, []);
 
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
@@ -298,6 +308,42 @@ function App() {
         people={peopleDB}
         onSave={handleSaveCalendars}
       />
+
+      {isDebugMode && (
+        <>
+          <button
+            onClick={() => setIsDebugModalOpen(true)}
+            title="Open Debug Panel"
+            style={{
+              position: 'fixed',
+              bottom: '2rem',
+              right: '2rem',
+              width: '3.5rem',
+              height: '3.5rem',
+              borderRadius: '50%',
+              backgroundColor: 'var(--surface-color)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              zIndex: 999,
+              transition: 'transform var(--transition-fast)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            🐛
+          </button>
+
+          <DebugModal
+            isOpen={isDebugModalOpen}
+            onClose={() => setIsDebugModalOpen(false)}
+          />
+        </>
+      )}
     </div>
   );
 }
