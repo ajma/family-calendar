@@ -1,76 +1,68 @@
 import React, { useState, useEffect } from 'react';
 
-const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, calendarAssignments = {}, calendarHashtags = {}, calendarEmojis = {}, people = [], onSave }) => {
-  const [localSelection, setLocalSelection] = useState([]);
-  const [localAssignments, setLocalAssignments] = useState({});
-  const [localHashtags, setLocalHashtags] = useState({});
-  const [localEmojis, setLocalEmojis] = useState({});
+const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {}, people = [], onSave }) => {
+  const [localConfigs, setLocalConfigs] = useState({});
 
   useEffect(() => {
     if (isOpen) {
-      setLocalSelection([...selectedCalendars]);
-      setLocalAssignments({ ...calendarAssignments });
-      setLocalHashtags({ ...calendarHashtags });
-      setLocalEmojis({ ...calendarEmojis });
+      // Deep copy to avoid mutating props
+      setLocalConfigs(JSON.parse(JSON.stringify(calendarConfigs)));
     }
-  }, [isOpen, selectedCalendars, calendarAssignments, calendarHashtags, calendarEmojis]);
+  }, [isOpen, calendarConfigs]);
 
   const handleToggle = (calendarId) => {
-    setLocalSelection(prev => {
-      if (prev.includes(calendarId)) {
-        return prev.filter(id => id !== calendarId);
-      } else {
-        // Auto-assign person if calendarId matches a person's email
+    setLocalConfigs(prevConfigs => {
+      const isSelected = prevConfigs[calendarId]?.selected;
+
+      const updatedConfigs = {
+        ...prevConfigs,
+        [calendarId]: {
+          ...prevConfigs[calendarId],
+          selected: !isSelected,
+        }
+      };
+
+      // Auto-assign person if calendarId matches a person's email and it was just selected
+      if (!isSelected) {
         const personMatch = people.find(p => p.email === calendarId);
         if (personMatch) {
-          setLocalAssignments(prevAssignments => ({
-            ...prevAssignments,
-            [calendarId]: personMatch.email
-          }));
+          updatedConfigs[calendarId].assignment = personMatch.email;
         }
-        return [...prev, calendarId];
       }
+
+      return updatedConfigs;
     });
   };
 
-  const handleAssignPerson = (calendarId, email) => {
-    setLocalAssignments(prev => {
-      const updated = { ...prev };
-      if (!email) {
-        delete updated[calendarId];
-      } else {
-        updated[calendarId] = email;
-      }
-      return updated;
-    });
-  };
+  const handleConfigChange = (calendarId, field, value) => {
+    setLocalConfigs(prev => {
+      const currentConfig = prev[calendarId] || {};
+      const updatedConfig = { ...currentConfig };
 
-  const handleHashtagChange = (calendarId, value) => {
-    setLocalHashtags(prev => {
-      const updated = { ...prev };
-      if (!value || value.trim() === '') {
-        delete updated[calendarId];
-      } else {
-        updated[calendarId] = value.trim();
-      }
-      return updated;
-    });
-  };
+      const trimmedValue = typeof value === 'string' ? value.trim() : value;
 
-  const handleEmojiChange = (calendarId, value) => {
-    setLocalEmojis(prev => {
-      const updated = { ...prev };
-      if (!value || value.trim() === '') {
-        delete updated[calendarId];
+      if (!trimmedValue || trimmedValue === '') {
+        delete updatedConfig[field];
       } else {
-        updated[calendarId] = value.trim();
+        updatedConfig[field] = trimmedValue;
       }
-      return updated;
+
+      // If config is completely empty, we can just omit it
+      if (Object.keys(updatedConfig).length === 0) {
+        const newConfigs = { ...prev };
+        delete newConfigs[calendarId];
+        return newConfigs;
+      }
+
+      return {
+        ...prev,
+        [calendarId]: updatedConfig
+      };
     });
   };
 
   const handleSave = () => {
-    onSave(localSelection, localAssignments, localHashtags, localEmojis);
+    onSave(localConfigs);
     onClose();
   };
 
@@ -112,7 +104,7 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', flexDirection: 'row', justifyContent: 'flex-start' }}>
                   <input
                     type="checkbox"
-                    checked={localSelection.includes(cal.id)}
+                    checked={localConfigs[cal.id]?.selected || false}
                     onChange={() => handleToggle(cal.id)}
                     style={{
                       marginRight: '1rem',
@@ -127,10 +119,10 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                       <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                         {cal.summaryOverride || cal.summary}
                       </div>
-                      {localSelection.includes(cal.id) && people.length > 0 && (
+                      {localConfigs[cal.id]?.selected && people.length > 0 && (
                         <select
-                          value={localAssignments[cal.id] || ''}
-                          onChange={(e) => handleAssignPerson(cal.id, e.target.value)}
+                          value={localConfigs[cal.id]?.assignment || ''}
+                          onChange={(e) => handleConfigChange(cal.id, 'assignment', e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           style={{
                             padding: '0.25rem 0.5rem',
@@ -151,13 +143,13 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                         </select>
                       )}
                     </div>
-                    {localSelection.includes(cal.id) && (
+                    {localConfigs[cal.id]?.selected && (
                       <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem', gap: '0.5rem' }}>
                         <input
                           type="text"
                           placeholder="Prefix Emoji"
-                          value={localEmojis[cal.id] || ''}
-                          onChange={(e) => handleEmojiChange(cal.id, e.target.value)}
+                          value={localConfigs[cal.id]?.emoji || ''}
+                          onChange={(e) => handleConfigChange(cal.id, 'emoji', e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           maxLength="5"
                           style={{
@@ -173,8 +165,8 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                         <input
                           type="text"
                           placeholder="#hashtag filter (optional)"
-                          value={localHashtags[cal.id] || ''}
-                          onChange={(e) => handleHashtagChange(cal.id, e.target.value)}
+                          value={localConfigs[cal.id]?.hashtag || ''}
+                          onChange={(e) => handleConfigChange(cal.id, 'hashtag', e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           style={{
                             padding: '0.25rem 0.5rem',

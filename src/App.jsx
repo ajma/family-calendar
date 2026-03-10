@@ -17,33 +17,10 @@ function App() {
   });
   const [events, setEvents] = useState([]);
   const [calendars, setCalendars] = useState([]);
-  const [selectedCalendars, setSelectedCalendars] = useState(() => {
+
+  const [calendarConfigs, setCalendarConfigs] = useState(() => {
     try {
-      const saved = localStorage.getItem('selected_calendars');
-      return saved ? JSON.parse(saved) : ['primary'];
-    } catch {
-      return ['primary'];
-    }
-  });
-  const [calendarAssignments, setCalendarAssignments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('calendar_assignments');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-  const [calendarHashtags, setCalendarHashtags] = useState(() => {
-    try {
-      const saved = localStorage.getItem('calendar_hashtags');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-  const [calendarEmojis, setCalendarEmojis] = useState(() => {
-    try {
-      const saved = localStorage.getItem('calendar_emojis');
+      const saved = localStorage.getItem('calendar_configs');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -83,9 +60,7 @@ function App() {
     setAccessToken(null);
     setEvents([]);
     setCalendars([]);
-    setSelectedCalendars(['primary']);
-    setCalendarAssignments({});
-    setCalendarHashtags({});
+    setCalendarConfigs({});
     setPeopleDB([]);
     setCurrentDate(new Date());
     localStorage.clear();
@@ -99,11 +74,20 @@ function App() {
 
       const primaryCal = data.find(c => c.primary);
       if (primaryCal) {
-        setSelectedCalendars(prev => {
-          if (prev.includes('primary')) {
-            const newSelection = prev.map(id => id === 'primary' ? primaryCal.id : id);
-            localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
-            return newSelection;
+        setCalendarConfigs(prev => {
+          // If the configs object doesn't have any explicitly selected calendars yet...
+          const hasSelections = Object.values(prev).some(config => config.selected);
+
+          if (!hasSelections) {
+            const newConfigs = {
+              ...prev,
+              [primaryCal.id]: {
+                ...prev[primaryCal.id],
+                selected: true
+              }
+            };
+            localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
+            return newConfigs;
           }
           return prev;
         });
@@ -131,15 +115,27 @@ function App() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString(), calendarHashtags);
+      // Extract hashtags for fetching
+      const fetchHashtags = Object.entries(calendarConfigs).reduce((acc, [calId, config]) => {
+        if (config.hashtag) acc[calId] = config.hashtag;
+        return acc;
+      }, {});
+
+      // Extract selected calendars for fetching
+      const selectedCalendars = Object.entries(calendarConfigs)
+        .filter(([_, config]) => config.selected)
+        .map(([calId, _]) => calId);
+
+      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString(), fetchHashtags);
 
       // Read existing people to use for assignment
       const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
 
       // Auto-assign attendees based on calendar assignments
       eventsData = eventsData.map(event => {
-        const assignedEmail = calendarAssignments[event._calendarId];
-        const calendarEmoji = calendarEmojis[event._calendarId];
+        const config = calendarConfigs[event._calendarId] || {};
+        const assignedEmail = config.assignment;
+        const calendarEmoji = config.emoji;
 
         let updatedEvent = { ...event };
 
@@ -221,7 +217,7 @@ function App() {
     if (accessToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, selectedCalendars, calendarAssignments, calendarHashtags, calendarEmojis]);
+  }, [currentDate, accessToken, calendarConfigs]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -248,15 +244,9 @@ function App() {
     setPeopleDB(updatedPeople);
   };
 
-  const handleSaveCalendars = (newSelection, newAssignments, newHashtags, newEmojis) => {
-    setSelectedCalendars(newSelection);
-    setCalendarAssignments(newAssignments);
-    setCalendarHashtags(newHashtags);
-    setCalendarEmojis(newEmojis);
-    localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
-    localStorage.setItem('calendar_assignments', JSON.stringify(newAssignments));
-    localStorage.setItem('calendar_hashtags', JSON.stringify(newHashtags));
-    localStorage.setItem('calendar_emojis', JSON.stringify(newEmojis));
+  const handleSaveCalendars = (newConfigs) => {
+    setCalendarConfigs(newConfigs);
+    localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
   };
 
   return (
@@ -327,10 +317,7 @@ function App() {
         isOpen={isCalendarSelectorOpen}
         onClose={() => setIsCalendarSelectorOpen(false)}
         calendars={calendars}
-        selectedCalendars={selectedCalendars}
-        calendarAssignments={calendarAssignments}
-        calendarHashtags={calendarHashtags}
-        calendarEmojis={calendarEmojis}
+        calendarConfigs={calendarConfigs}
         people={peopleDB}
         onSave={handleSaveCalendars}
       />
