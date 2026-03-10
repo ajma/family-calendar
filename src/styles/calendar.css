@@ -125,14 +125,14 @@
 
 
 .day-header {
-  padding: 1rem;
+  padding: 0.5rem;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
   background: rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1rem;
   flex-shrink: 0;
 }
 
@@ -145,10 +145,10 @@
 }
 
 .day-number {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
