@@ -35,7 +35,7 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    ```
 3. Create a `.env` file in the root directory (where `package.json` is located) and populate it with your Google credentials:
    ```env
-   VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
+   GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
    ```
 4. Start the Vite development server:
    ```bash
@@ -56,7 +56,7 @@ services:
     ports:
       - "5173:80"
     environment:
-      - VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
 ```
 
 Run `docker compose up -d` to start the application. Note that the image must be built and published to your GitHub Container Registry, or you can build it locally.

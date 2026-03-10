@@ -25,8 +25,15 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy the built assets from the build stage to nginx web root
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Copy custom entrypoint script
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
 # Expose port 80
 EXPOSE 80
+
+# Use the custom entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
