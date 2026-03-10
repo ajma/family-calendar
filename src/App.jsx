@@ -151,6 +151,24 @@ function App() {
             updatedEvent.attendees = attendees;
           }
         }
+
+        // Check for #allfamily in the event description
+        if (updatedEvent.description && updatedEvent.description.toLowerCase().includes('#allfamily')) {
+          const attendees = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
+          let attendeesModified = false;
+
+          existingPeople.forEach(person => {
+            if (!attendees.some(a => a.email === person.email)) {
+              attendees.push({ email: person.email, displayName: person.name || person.email, responseStatus: 'accepted' });
+              attendeesModified = true;
+            }
+          });
+
+          if (attendeesModified) {
+            updatedEvent.attendees = attendees;
+          }
+        }
+
         return updatedEvent;
       });
 

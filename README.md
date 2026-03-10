@@ -10,6 +10,7 @@ Family Calendar is a helpful web application that allows you to seamlessly unify
 - **Auto-Attendee Linking:** Assign each calendar a specific 'Person' from your local database. When CalendarSync downloads an event from that calendar, it will automatically stamp that person as an attendee!
 - **Attendee Editor:** Not happy with randomly assigned display names or colors? Use the custom Attendee Editor to tweak user display names, their two-letter initials, and their specific unique UI color palette.
 - **Smart Filtering:** Automatically discards events marked as `private` or events that contain the hashtag `#ignore` in their description.
+- **Family Events:** Add `#allfamily` to an event description to automatically flag every configured person in your system as an attendee.
 - **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct localStorage manipulation, useful for troubleshooting your data state.
 
 ## Technology Stack
