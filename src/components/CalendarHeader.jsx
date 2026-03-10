@@ -45,7 +45,7 @@ const CalendarHeader = ({ currentDate, onPrev, onNext, onToday }) => {
 
   return (
     <div className="calendar-controls">
-      <button onClick={onToday} className="control-btn glass">Today</button>
+      <button onClick={onToday} className="control-btn glass">This Week</button>
       <div className="nav-group glass">
         <button onClick={onPrev} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
         <button onClick={onNext} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>

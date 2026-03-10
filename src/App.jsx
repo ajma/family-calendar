@@ -78,7 +78,7 @@ function App() {
     try {
       const data = await fetchCalendars(accessToken);
       setCalendars(data);
-      
+
       const primaryCal = data.find(c => c.primary);
       if (primaryCal) {
         setSelectedCalendars(prev => {
@@ -248,11 +248,11 @@ function App() {
 
         <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
           {accessToken && calendars.length > 0 && (
-            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsCalendarSelectorOpen(true)}>Select Calendars</button>
+            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
           )}
 
           {accessToken && (
-            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsEditorOpen(true)}>Edit Attendees</button>
+            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
           )}
 
           {accessToken ? (
