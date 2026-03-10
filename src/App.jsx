@@ -32,6 +32,14 @@ function App() {
       return {};
     }
   });
+  const [calendarHashtags, setCalendarHashtags] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_hashtags');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
@@ -59,6 +67,7 @@ function App() {
     setCalendars([]);
     setSelectedCalendars(['primary']);
     setCalendarAssignments({});
+    setCalendarHashtags({});
     setPeopleDB([]);
     setCurrentDate(new Date());
     localStorage.clear();
@@ -104,7 +113,7 @@ function App() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString());
+      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString(), calendarHashtags);
 
       // Read existing people to use for assignment
       const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
@@ -185,7 +194,7 @@ function App() {
     if (accessToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, selectedCalendars, calendarAssignments]);
+  }, [currentDate, accessToken, selectedCalendars, calendarAssignments, calendarHashtags]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -214,11 +223,13 @@ function App() {
     setEvents([...events]);
   };
 
-  const handleSaveCalendars = (newSelection, newAssignments) => {
+  const handleSaveCalendars = (newSelection, newAssignments, newHashtags) => {
     setSelectedCalendars(newSelection);
     setCalendarAssignments(newAssignments);
+    setCalendarHashtags(newHashtags);
     localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
     localStorage.setItem('calendar_assignments', JSON.stringify(newAssignments));
+    localStorage.setItem('calendar_hashtags', JSON.stringify(newHashtags));
   };
 
   return (
@@ -283,6 +294,7 @@ function App() {
         calendars={calendars}
         selectedCalendars={selectedCalendars}
         calendarAssignments={calendarAssignments}
+        calendarHashtags={calendarHashtags}
         people={peopleDB}
         onSave={handleSaveCalendars}
       />

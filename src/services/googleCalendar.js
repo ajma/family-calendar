@@ -21,7 +21,7 @@ export const fetchCalendars = async (accessToken) => {
   return data.items || [];
 };
 
-export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMin, timeMax) => {
+export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMin, timeMax, calendarHashtags = {}) => {
   if (!accessToken) {
     throw new Error('Access token is required to fetch events.');
   }
@@ -57,7 +57,12 @@ export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMi
   });
 
   const fetchSingleCalendar = async (calId) => {
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?${queryParams.toString()}`;
+    const hashtag = calendarHashtags[calId];
+    const params = new URLSearchParams(queryParams);
+    if (hashtag) {
+      params.append('q', hashtag);
+    }
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?${params.toString()}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -78,14 +83,14 @@ export const fetchEvents = async (accessToken, calendarIds = ['primary'], timeMi
   try {
     // Fetch all selected calendars in parallel
     const results = await Promise.all(idsToFetch.map(id => fetchSingleCalendar(id)));
-    
+
     // Flatten the array of arrays into a single array
     const mergedEvents = results.flat();
 
     // Deduplicate events by ID (if same event is shared across calendars)
     const uniqueEvents = [];
     const seenIds = new Set();
-    
+
     for (const event of mergedEvents) {
       // Discard private events
       if (event.visibility === 'private') {
