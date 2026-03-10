@@ -36,13 +36,30 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
 3. Create a `.env` file in the root directory (where `package.json` is located) and populate it with your Google credentials:
    ```env
    VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
-   VITE_GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY"
    ```
 4. Start the Vite development server:
    ```bash
    npm run dev
-   ```
 5. Open up `http://localhost:5173` in your browser.
+
+### Docker Compose
+
+Alternatively, you can run the application using Docker Compose. Here is an example `docker-compose.yml` configuration:
+
+```yaml
+version: '3.8'
+
+services:
+  family-calendar:
+    image: ghcr.io/ajma/family-calendar:latest
+    container_name: family-calendar
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+```
+
+Run `docker compose up -d` to start the application. Note that the image must be built and published to your GitHub Container Registry, or you can build it locally.
 
 ## Usage Guide
 
