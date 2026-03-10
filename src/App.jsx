@@ -143,6 +143,8 @@ function App() {
       });
 
       // format events to match what the UI expects if needed
+      // format events to match what the UI expects if needed
+
       setEvents(eventsData);
 
       // Extract unique attendees and save to localStorage
@@ -229,8 +231,6 @@ function App() {
   const handleSaveAttendees = (updatedPeople) => {
     localStorage.setItem('people', JSON.stringify(updatedPeople));
     setPeopleDB(updatedPeople);
-    // Force a re-render of events to reflect new colors/initials
-    setEvents([...events]);
   };
 
   const handleSaveCalendars = (newSelection, newAssignments, newHashtags) => {
@@ -286,9 +286,17 @@ function App() {
           </div>
         ) : loading ? (
           <div className="loading-state glass" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading your schedule...</div>
-        ) : (
-          <WeekGrid currentDate={currentDate} events={events} />
-        )}
+        ) : (() => {
+          const filteredEvents = events.map(event => {
+            if (!event.attendees) return event;
+            const filteredAttendees = event.attendees.filter(att => {
+              const person = peopleDB.find(p => p.email === att.email);
+              return !(person && person.show === false);
+            });
+            return { ...event, attendees: filteredAttendees };
+          });
+          return <WeekGrid currentDate={currentDate} events={filteredEvents} />;
+        })()}
       </main>
 
       <AttendeeEditor

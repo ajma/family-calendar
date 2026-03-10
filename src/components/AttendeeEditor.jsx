@@ -34,14 +34,15 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
     if (!newColor) {
       newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
     }
-    
+
     setLocalPeople([
       {
         _id: 'new_' + Math.random(),
         name: 'New Person',
         email: '',
         initials: 'NP',
-        color: newColor
+        color: newColor,
+        show: true
       },
       ...localPeople
     ]);
@@ -66,21 +67,21 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
           {localPeople.map(person => (
             <div key={person._id} className="attendee-list-item editing" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid var(--border-color)' }}>
 
-              <div className="attendee-edit-form" style={{ 
-                marginTop: 0, 
-                paddingTop: 0, 
-                borderTop: 'none', 
+              <div className="attendee-edit-form" style={{
+                marginTop: 0,
+                paddingTop: 0,
+                borderTop: 'none',
                 animation: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 width: '100%'
               }}>
-                
+
                 {/* Left side: Inputs */}
                 <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    
+
                     {/* Name & Email Column */}
                     <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       <input
@@ -97,8 +98,17 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
                         onChange={(e) => handleChange(person._id, 'email', e.target.value)}
                         style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.75rem', color: 'var(--text-secondary)' }}
                       />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={person.show !== false} // default to true if undefined
+                          onChange={(e) => handleChange(person._id, 'show', e.target.checked)}
+                          id={`show-${person._id}`}
+                        />
+                        <label htmlFor={`show-${person._id}`} style={{ fontSize: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>Show</label>
+                      </div>
                     </div>
-                    
+
                     {/* Initials & Avatar Column */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                       <input
@@ -109,10 +119,10 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
                         onChange={(e) => handleChange(person._id, 'initials', e.target.value)}
                         style={{ width: '45px', textTransform: 'uppercase', textAlign: 'center', padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)', outline: 'none', fontSize: '0.85rem' }}
                       />
-                      <div style={{ 
-                        backgroundColor: person.color, 
-                        width: '32px', height: '32px', 
-                        borderRadius: '50%', 
+                      <div style={{
+                        backgroundColor: person.color,
+                        width: '32px', height: '32px',
+                        borderRadius: '50%',
                         marginTop: '0.2rem',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: 'white', fontSize: '13px', fontWeight: '700',
