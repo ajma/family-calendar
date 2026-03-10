@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, calendarAssignments = {}, calendarHashtags = {}, people = [], onSave }) => {
+const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, calendarAssignments = {}, calendarHashtags = {}, calendarEmojis = {}, people = [], onSave }) => {
   const [localSelection, setLocalSelection] = useState([]);
   const [localAssignments, setLocalAssignments] = useState({});
   const [localHashtags, setLocalHashtags] = useState({});
+  const [localEmojis, setLocalEmojis] = useState({});
 
   useEffect(() => {
     if (isOpen) {
       setLocalSelection([...selectedCalendars]);
       setLocalAssignments({ ...calendarAssignments });
       setLocalHashtags({ ...calendarHashtags });
+      setLocalEmojis({ ...calendarEmojis });
     }
-  }, [isOpen, selectedCalendars, calendarAssignments, calendarHashtags]);
+  }, [isOpen, selectedCalendars, calendarAssignments, calendarHashtags, calendarEmojis]);
 
   const handleToggle = (calendarId) => {
     setLocalSelection(prev => {
@@ -55,8 +57,20 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
     });
   };
 
+  const handleEmojiChange = (calendarId, value) => {
+    setLocalEmojis(prev => {
+      const updated = { ...prev };
+      if (!value || value.trim() === '') {
+        delete updated[calendarId];
+      } else {
+        updated[calendarId] = value.trim();
+      }
+      return updated;
+    });
+  };
+
   const handleSave = () => {
-    onSave(localSelection, localAssignments, localHashtags);
+    onSave(localSelection, localAssignments, localHashtags, localEmojis);
     onClose();
   };
 
@@ -138,7 +152,24 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                       )}
                     </div>
                     {localSelection.includes(cal.id) && (
-                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem', gap: '0.5rem' }}>
+                        <input
+                          type="text"
+                          placeholder="Prefix Emoji"
+                          value={localEmojis[cal.id] || ''}
+                          onChange={(e) => handleEmojiChange(cal.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          maxLength="5"
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--surface-color)',
+                            color: 'var(--text-primary)',
+                            fontSize: '0.85rem',
+                            width: '90px'
+                          }}
+                        />
                         <input
                           type="text"
                           placeholder="#hashtag filter (optional)"
@@ -152,7 +183,7 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, selectedCalendars, 
                             background: 'var(--surface-color)',
                             color: 'var(--text-primary)',
                             fontSize: '0.85rem',
-                            width: '100%',
+                            flex: 1,
                             maxWidth: '200px'
                           }}
                         />

@@ -41,6 +41,14 @@ function App() {
       return {};
     }
   });
+  const [calendarEmojis, setCalendarEmojis] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_emojis');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
@@ -131,18 +139,25 @@ function App() {
       // Auto-assign attendees based on calendar assignments
       eventsData = eventsData.map(event => {
         const assignedEmail = calendarAssignments[event._calendarId];
+        const calendarEmoji = calendarEmojis[event._calendarId];
+
+        let updatedEvent = { ...event };
+
+        if (calendarEmoji && updatedEvent.summary) {
+          updatedEvent.summary = `${calendarEmoji} ${updatedEvent.summary}`;
+        }
+
         if (assignedEmail) {
           const person = existingPeople.find(p => p.email === assignedEmail);
-          const attendees = event.attendees ? [...event.attendees] : [];
+          const attendees = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
           if (person && !attendees.some(a => a.email === assignedEmail)) {
             attendees.push({ email: person.email, displayName: person.name || person.email, responseStatus: 'accepted' });
-            return { ...event, attendees };
+            updatedEvent.attendees = attendees;
           }
         }
-        return event;
+        return updatedEvent;
       });
 
-      // format events to match what the UI expects if needed
       // format events to match what the UI expects if needed
 
       setEvents(eventsData);
@@ -206,7 +221,7 @@ function App() {
     if (accessToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, selectedCalendars, calendarAssignments, calendarHashtags]);
+  }, [currentDate, accessToken, selectedCalendars, calendarAssignments, calendarHashtags, calendarEmojis]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -233,13 +248,15 @@ function App() {
     setPeopleDB(updatedPeople);
   };
 
-  const handleSaveCalendars = (newSelection, newAssignments, newHashtags) => {
+  const handleSaveCalendars = (newSelection, newAssignments, newHashtags, newEmojis) => {
     setSelectedCalendars(newSelection);
     setCalendarAssignments(newAssignments);
     setCalendarHashtags(newHashtags);
+    setCalendarEmojis(newEmojis);
     localStorage.setItem('selected_calendars', JSON.stringify(newSelection));
     localStorage.setItem('calendar_assignments', JSON.stringify(newAssignments));
     localStorage.setItem('calendar_hashtags', JSON.stringify(newHashtags));
+    localStorage.setItem('calendar_emojis', JSON.stringify(newEmojis));
   };
 
   return (
@@ -313,6 +330,7 @@ function App() {
         selectedCalendars={selectedCalendars}
         calendarAssignments={calendarAssignments}
         calendarHashtags={calendarHashtags}
+        calendarEmojis={calendarEmojis}
         people={peopleDB}
         onSave={handleSaveCalendars}
       />
