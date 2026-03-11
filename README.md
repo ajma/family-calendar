@@ -77,6 +77,15 @@ Run `docker compose up -d` to start the application. Note that the image must be
 5. Hit Apply, and enjoy your synced weekly calendar view!
 6. Use the **Edit Attendees** to rename or recolor attendees dynamically.
 
+## Testing
+
+This project includes a comprehensive test suite. For a detailed breakdown of the implemented tests and their coverage, please refer to the [Test Suite Coverage documentation](./docs/TESTS.md).
+
+To run the test suite locally:
+```bash
+npm run test
+```
+
 ## License
 
 This project is open-source and available under the standard MIT License.

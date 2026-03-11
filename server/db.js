@@ -8,8 +8,9 @@ const __dirname = path.dirname(__filename);
 
 // Initialize DB
 async function getDb() {
+    const dbFile = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
     return open({
-        filename: path.join(__dirname, 'database.sqlite'),
+        filename: path.join(__dirname, dbFile),
         driver: sqlite3.Database
     });
 }

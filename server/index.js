@@ -90,10 +90,14 @@ app.get('/env-config.js', (req, res) => {
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Catch-all to serve index.html for any other route (React Router support)
-app.get('*', (req, res) => {
+app.get(/^.*$/, (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`Backend server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`Backend server running on port ${PORT}`);
+    });
+}
+
+export default app;
