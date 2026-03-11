@@ -9,14 +9,16 @@ Family Calendar is a helpful web application that allows you to seamlessly unify
 - **Cross-Calendar Deduplication:** If the same event was shared across multiple calendars, CalendarSync will intelligently merge them together and present it as one event, preventing duplicated clutter.
 - **Auto-Attendee Linking:** Assign each calendar a specific 'Person' from your local database. When CalendarSync downloads an event from that calendar, it will automatically stamp that person as an attendee!
 - **Attendee Editor:** Not happy with randomly assigned display names or colors? Use the custom Attendee Editor to tweak user display names, their two-letter initials, and their specific unique UI color palette.
+- **Persistent Settings:** Your calendar selections and custom attendees are saved to a localized SQLite database, meaning your setup is restored exactly as you left it every time you log in with your Google Account.
 - **Smart Filtering:** Automatically discards events marked as `private` or events that contain the hashtag `#ignore` in their description.
 - **Family Events:** Add `#allfamily` to an event description to automatically flag every configured person in your system as an attendee.
-- **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct localStorage manipulation, useful for troubleshooting your data state.
+- **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct state manipulation. Changes are synced safely to the backend database.
 
 ## Technology Stack
 
-- **Framework:** React
-- **Build Tool:** Vite
+- **Frontend:** React + Vite
+- **Backend:** Node.js + Express
+- **Database:** SQLite
 - **Styling:** Vanilla CSS 
 - **Google API Integration:** `@react-oauth/google` & Native Fetch API
 
@@ -37,14 +39,17 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    ```env
    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
    ```
-4. Start the Vite development server:
+4. Start both the Vite development server and the Express backend concurrently:
    ```bash
    npm run dev
+   ```
 5. Open up `http://localhost:5173` in your browser.
 
 ### Docker Compose
 
-Alternatively, you can run the application using Docker Compose. Here is an example `docker-compose.yml` configuration:
+Alternatively, you can run the application directly for production using Docker Compose. The Docker container runs both the API and the compiled frontend together on a unified port.
+
+Here is an example `docker-compose.yml` configuration:
 
 ```yaml
 version: '3.8'
@@ -54,9 +59,11 @@ services:
     image: ghcr.io/ajma/family-calendar:latest
     container_name: family-calendar
     ports:
-      - "5173:80"
+      - "5173:5173"
     environment:
       - GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+    volumes:
+      - ./server_data:/app/server
 ```
 
 Run `docker compose up -d` to start the application. Note that the image must be built and published to your GitHub Container Registry, or you can build it locally.
