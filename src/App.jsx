@@ -328,20 +328,21 @@ function App() {
             onPrev={handlePrevWeek}
             onNext={handleNextWeek}
             onToday={handleToday}
+            onRefresh={loadEvents}
           />
         )}
 
         <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
           {accessToken && calendars.length > 0 && (
-            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
+            <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
           )}
 
           {accessToken && (
-            <button className="control-btn" style={{ marginRight: '1rem', background: 'var(--surface-color)' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
+            <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
           )}
 
           {accessToken ? (
-            <button className="control-btn" onClick={logout}>Sign Out</button>
+            <button className="control-btn glass" onClick={logout}>Sign Out</button>
           ) : (
             <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
           )}

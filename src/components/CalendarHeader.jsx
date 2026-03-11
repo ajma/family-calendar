@@ -13,7 +13,14 @@ const ChevronRight = () => (
   </svg>
 );
 
-const CalendarHeader = ({ currentDate, onPrev, onNext, onToday }) => {
+const RefreshIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+  </svg>
+);
+
+const CalendarHeader = ({ currentDate, onPrev, onNext, onToday, onRefresh }) => {
   // Compute start (Monday) and end (Sunday) of the week
   const dayOfWeek = currentDate.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -45,7 +52,12 @@ const CalendarHeader = ({ currentDate, onPrev, onNext, onToday }) => {
 
   return (
     <div className="calendar-controls">
-      <button onClick={onToday} className="control-btn glass">This Week</button>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <button onClick={onToday} className="control-btn glass">This Week</button>
+        <button onClick={onRefresh} className="control-btn glass" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Refresh Calendar" title="Refresh Calendar">
+          <RefreshIcon />
+        </button>
+      </div>
       <div className="nav-group glass">
         <button onClick={onPrev} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
         <button onClick={onNext} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>
