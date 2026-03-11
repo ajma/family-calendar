@@ -6,6 +6,7 @@ import AttendeeEditor from './components/AttendeeEditor';
 import CalendarSelectorModal from './components/CalendarSelectorModal';
 import DebugModal from './components/DebugModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
+import { fetchSettings, saveSettings } from './services/backend';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
 import './styles/calendar.css';
@@ -31,9 +32,35 @@ function App() {
   const [errorMSG, setErrorMSG] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
-  const [peopleDB, setPeopleDB] = useState([]);
+  const [peopleDB, setPeopleDB] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('people') || '[]');
+    } catch {
+      return [];
+    }
+  });
   const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!accessToken) return;
+      try {
+        const settings = await fetchSettings(accessToken);
+        if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
+          setCalendarConfigs(settings.calendarConfigs);
+          localStorage.setItem('calendar_configs', JSON.stringify(settings.calendarConfigs));
+        }
+        if (settings.people && settings.people.length > 0) {
+          setPeopleDB(settings.people);
+          localStorage.setItem('people', JSON.stringify(settings.people));
+        }
+      } catch (e) {
+        console.error('Failed to load settings from DB, falling back to local storage', e);
+      }
+    };
+    loadUserData();
+  }, [accessToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,6 +114,7 @@ function App() {
               }
             };
             localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
+            saveSettings(accessToken, newConfigs, peopleDB).catch(e => console.error(e));
             return newConfigs;
           }
           return prev;
@@ -211,6 +239,14 @@ function App() {
       localStorage.setItem('people', JSON.stringify(newPeopleDB));
       setPeopleDB(newPeopleDB);
 
+      if (newPeopleDB.length > existingPeople.length) {
+        try {
+          await saveSettings(accessToken, calendarConfigs, newPeopleDB);
+        } catch (e) {
+          console.error('Failed to save discovered people', e);
+        }
+      }
+
     } catch (error) {
       console.error('Failed to load events', error);
       if (error.message.includes('401') || error.message.includes('403')) {
@@ -257,14 +293,28 @@ function App() {
     localStorage.setItem('selected_date', today.toISOString());
   };
 
-  const handleSaveAttendees = (updatedPeople) => {
+  const handleSaveAttendees = async (updatedPeople) => {
     localStorage.setItem('people', JSON.stringify(updatedPeople));
     setPeopleDB(updatedPeople);
+    if (accessToken) {
+      try {
+        await saveSettings(accessToken, calendarConfigs, updatedPeople);
+      } catch (e) {
+        console.error('Error saving people to backend:', e);
+      }
+    }
   };
 
-  const handleSaveCalendars = (newConfigs) => {
+  const handleSaveCalendars = async (newConfigs) => {
     setCalendarConfigs(newConfigs);
     localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
+    if (accessToken) {
+      try {
+        await saveSettings(accessToken, newConfigs, peopleDB);
+      } catch (e) {
+        console.error('Error saving calendars to backend:', e);
+      }
+    }
   };
 
   return (
@@ -372,6 +422,11 @@ function App() {
           <DebugModal
             isOpen={isDebugModalOpen}
             onClose={() => setIsDebugModalOpen(false)}
+            onBackendSave={async (configs, people) => {
+              if (accessToken) {
+                await saveSettings(accessToken, configs, people);
+              }
+            }}
           />
         </>
       )}

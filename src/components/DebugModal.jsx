@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const DebugModal = ({ isOpen, onClose }) => {
+const DebugModal = ({ isOpen, onClose, onBackendSave }) => {
     const [localStoreState, setLocalStoreState] = useState('');
     const [errorMSG, setErrorMSG] = useState(null);
 
@@ -51,8 +51,18 @@ const DebugModal = ({ isOpen, onClose }) => {
                 localStorage.setItem(key, valToStore);
             }
 
-            // Reload page to apply new state securely
-            window.location.reload();
+            // Also try saving to the backend so it isn't overwritten on reload
+            if (onBackendSave) {
+                const newConfigs = parsed['calendar_configs'] || {};
+                const newPeople = parsed['people'] || [];
+                onBackendSave(newConfigs, newPeople).then(() => {
+                    window.location.reload();
+                }).catch(err => {
+                    setErrorMSG('Failed to save to backend: ' + err.message);
+                });
+            } else {
+                window.location.reload();
+            }
 
         } catch (error) {
             setErrorMSG('Invalid JSON format: ' + error.message);

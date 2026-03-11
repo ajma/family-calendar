@@ -17,23 +17,29 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM node:20-alpine
 
-# Copy custom nginx configuration for SPA routing
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copy the built assets from the build stage to nginx web root
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy package files and install only production dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Copy custom entrypoint script
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
+# Copy backend files
+COPY server/ ./server/
 
-# Expose port 80
-EXPOSE 80
+# Copy built frontend assets
+COPY --from=build /app/dist ./dist
 
-# Use the custom entrypoint
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Create a volume for the SQLite database so settings persist across container restarts
+VOLUME ["/app/server"]
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5173
+
+# Expose the single port Express is running on
+EXPOSE 5173
+
+# Start the Express server
+CMD ["npm", "start"]
