@@ -23,5 +23,11 @@ jobs:
     - name: Install required dependencies
       run: npm ci
       
-    - name: Run Comprehensive Test Suite
-      run: npm run test
+    - name: Run Tests
+      run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results.xml
+
+    - name: Test Summary
+      uses: test-summary/action@v2.4
+      if: always()
+      with:
+        paths: 'test-results.xml'
