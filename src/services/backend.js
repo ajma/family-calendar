@@ -24,3 +24,18 @@ export const saveSettings = async (accessToken, calendarConfigs, people) => {
     }
     return response.json();
 };
+
+export const resetSettings = async (accessToken) => {
+    const response = await fetch('/api/settings/reset', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset settings');
+    }
+    return data;
+};

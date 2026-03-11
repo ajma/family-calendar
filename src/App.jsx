@@ -6,7 +6,7 @@ import AttendeeEditor from './components/AttendeeEditor';
 import CalendarSelectorModal from './components/CalendarSelectorModal';
 import DebugModal from './components/DebugModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
-import { fetchSettings, saveSettings } from './services/backend';
+import { fetchSettings, saveSettings, resetSettings } from './services/backend';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
 import './styles/calendar.css';
@@ -41,12 +41,14 @@ function App() {
   });
   const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
       if (!accessToken) return;
       try {
         const settings = await fetchSettings(accessToken);
+        setIsAdmin(!!settings.isAdmin);
         if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
           setCalendarConfigs(settings.calendarConfigs);
           localStorage.setItem('calendar_configs', JSON.stringify(settings.calendarConfigs));
@@ -89,8 +91,17 @@ function App() {
     setCalendars([]);
     setCalendarConfigs({});
     setPeopleDB([]);
+    setIsAdmin(false);
     setCurrentDate(new Date());
     localStorage.clear();
+  };
+
+  const handleFullReset = async () => {
+    if (accessToken) {
+      await resetSettings(accessToken);
+    }
+    setIsDebugModalOpen(false);
+    logout();
   };
 
   const loadCalendars = async () => {
@@ -391,7 +402,7 @@ function App() {
         onSave={handleSaveCalendars}
       />
 
-      {isDebugMode && (
+      {isDebugMode && accessToken && isAdmin && (
         <>
           <button
             onClick={() => setIsDebugModalOpen(true)}
@@ -428,6 +439,7 @@ function App() {
                 await saveSettings(accessToken, configs, people);
               }
             }}
+            onFullReset={handleFullReset}
           />
         </>
       )}

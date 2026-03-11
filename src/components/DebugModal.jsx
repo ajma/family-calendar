@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
-const DebugModal = ({ isOpen, onClose, onBackendSave }) => {
+const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
     const [localStoreState, setLocalStoreState] = useState('');
     const [errorMSG, setErrorMSG] = useState(null);
+    const [isResetConfirming, setIsResetConfirming] = useState(false);
+    const [resetConfirmationText, setResetConfirmationText] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             loadLocalStorage();
+            setIsResetConfirming(false);
+            setResetConfirmationText('');
         }
     }, [isOpen]);
 
@@ -106,9 +110,66 @@ const DebugModal = ({ isOpen, onClose, onBackendSave }) => {
                     />
                 </div>
 
-                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                    <button onClick={onClose} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-                    <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1rem', background: '#ff7b72' }}>Save & Reload</button>
+                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+
+                    {/* DANGER ZONE */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,123,114,0.05)', padding: '0.5rem', borderRadius: '6px', border: '1px solid rgba(255,123,114,0.3)' }}>
+                        {!isResetConfirming ? (
+                            <button
+                                onClick={() => setIsResetConfirming(true)}
+                                className="btn-secondary"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: '#ff7b72', borderColor: '#ff7b72' }}
+                            >
+                                ⚠️ Full Reset
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Type DELETE"
+                                    value={resetConfirmationText}
+                                    onChange={(e) => setResetConfirmationText(e.target.value)}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '100px', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid #ff7b72', borderRadius: '4px' }}
+                                />
+                                <button
+                                    onClick={async () => {
+                                        if (onFullReset) {
+                                            try {
+                                                await onFullReset();
+                                            } catch (err) {
+                                                setErrorMSG(err.message);
+                                                setIsResetConfirming(false);
+                                                setResetConfirmationText('');
+                                            }
+                                        }
+                                    }}
+                                    disabled={resetConfirmationText !== 'DELETE'}
+                                    style={{
+                                        padding: '0.25rem 0.5rem',
+                                        fontSize: '0.8rem',
+                                        background: resetConfirmationText === 'DELETE' ? '#ff7b72' : 'var(--bg-color)',
+                                        color: resetConfirmationText === 'DELETE' ? '#fff' : 'var(--text-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '4px',
+                                        cursor: resetConfirmationText === 'DELETE' ? 'pointer' : 'not-allowed'
+                                    }}
+                                >
+                                    Confirm
+                                </button>
+                                <button
+                                    onClick={() => { setIsResetConfirming(false); setResetConfirmationText(''); }}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={onClose} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1rem', background: '#ff7b72' }}>Save & Reload</button>
+                    </div>
                 </div>
             </div>
         </div>

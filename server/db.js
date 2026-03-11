@@ -7,12 +7,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize DB
-async function getDb() {
+let dbInstance = null;
+
+export async function getDb() {
+    if (dbInstance) return dbInstance;
+
     const dbFile = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
-    return open({
+    dbInstance = await open({
         filename: path.join(__dirname, dbFile),
         driver: sqlite3.Database
     });
+    return dbInstance;
+}
+
+export async function closeDb() {
+    if (dbInstance) {
+        await dbInstance.close();
+        dbInstance = null;
+    }
 }
 
 // Ensure tables exist
@@ -48,4 +60,9 @@ export async function saveUserSettings(userId, calendarConfigs, people) {
        people = excluded.people`,
         [userId, JSON.stringify(calendarConfigs || {}), JSON.stringify(people || [])]
     );
+}
+
+export async function clearAllUserSettings() {
+    const db = await getDb();
+    await db.run('DELETE FROM user_settings');
 }

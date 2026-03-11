@@ -12,7 +12,8 @@ Family Calendar is a helpful web application that allows you to seamlessly unify
 - **Persistent Settings:** Your calendar selections and custom attendees are saved to a localized SQLite database, meaning your setup is restored exactly as you left it every time you log in with your Google Account.
 - **Smart Filtering:** Automatically discards events marked as `private` or events that contain the hashtag `#ignore` in their description.
 - **Family Events:** Add `#allfamily` to an event description to automatically flag every configured person in your system as an attendee.
-- **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct state manipulation. Changes are synced safely to the backend database.
+- **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct state manipulation. Only visible to the configured `ADMIN_EMAIL`. Changes are synced safely to the backend database.
+- **Admin Full Reset:** An admin can wipe the entire configuration database directly from the Debug Panel.
 
 ## Technology Stack
 
@@ -61,7 +62,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_ID=[YOUR_GOOGLE_CLIENT_ID]
+      - ADMIN_EMAIL=[EMAIL_ADDRESS]
     volumes:
       - ./server_data:/app/server
 ```

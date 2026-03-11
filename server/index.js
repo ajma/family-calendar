@@ -1,8 +1,11 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initializeDb, getUserSettings, saveUserSettings } from './db.js';
+import { initializeDb, getUserSettings, saveUserSettings, clearAllUserSettings } from './db.js';
+
+dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.env') });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,14 +56,18 @@ console.log('SQLite database initialized.');
 app.get('/api/settings', verifyGoogleToken, async (req, res) => {
     try {
         const userId = req.user.email;
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const isAdmin = Boolean(adminEmail && userId === adminEmail);
+
         const settings = await getUserSettings(userId);
         if (!settings) {
-            return res.json({ calendarConfigs: {}, people: [] });
+            return res.json({ calendarConfigs: {}, people: [], isAdmin });
         }
         // ensure fallback lists exist even if previously saved correctly empty
         res.json({
             calendarConfigs: settings.calendarConfigs || {},
-            people: settings.people || []
+            people: settings.people || [],
+            isAdmin
         });
     } catch (error) {
         console.error('Error fetching settings:', error);
@@ -80,10 +87,29 @@ app.put('/api/settings', verifyGoogleToken, async (req, res) => {
     }
 });
 
+app.post('/api/settings/reset', verifyGoogleToken, async (req, res) => {
+    try {
+        const userEmail = req.user.email;
+        const adminEmail = process.env.ADMIN_EMAIL;
+
+        if (!adminEmail || userEmail !== adminEmail) {
+            return res.status(403).json({ error: 'Only the admin can perform a full reset' });
+        }
+
+        await clearAllUserSettings();
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error clearing all settings:', error);
+        res.status(500).json({ error: 'Failed to clear all settings' });
+    }
+});
+
 // Dynamically serve environment variables for the frontend
 app.get('/env-config.js', (req, res) => {
     res.type('.js');
-    res.send(`window._env_ = { GOOGLE_CLIENT_ID: "${process.env.GOOGLE_CLIENT_ID || ''}" };`);
+    res.send(`window._env_ = { 
+        GOOGLE_CLIENT_ID: "${process.env.GOOGLE_CLIENT_ID || ''}"
+    };`);
 });
 
 // Serve static frontend files
