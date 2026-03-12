@@ -2,9 +2,10 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 85 tests across 9 files.**
+**Total: 70 tests across 9 files.**
 
 To run:
+
 ```bash
 npm run test
 ```
@@ -15,64 +16,67 @@ npm run test
 
 ### `server/__tests__/api.test.js`
 
+#### `POST /api/auth`
+
+- Returns `400` when no auth code is provided.
+- Exchanges a valid code and returns a local `session_token` (JWT).
+- Returns `500` if Google's token exchange fails (e.g. `invalid_grant`).
+
 #### `GET /api/settings`
+
 - Returns `401` when Authorization header is missing or invalid.
 - Returns empty defaults (`{ calendarConfigs: {}, people: [] }`) for a new user.
 
 #### `PUT /api/settings`
+
 - Saves `calendarConfigs` and `people`; subsequent `GET` returns the persisted data.
 
 #### `POST /api/settings/reset`
+
 - Returns `403` for non-admin users.
 - Wipes all settings when called by the configured `ADMIN_EMAIL`.
 
-#### `POST /api/auth/exchange`
-- Returns `400` when no auth code is provided.
-- Exchanges a valid code and returns `access_token` + `expiry_date`.
-- Returns `500` if Google's token exchange fails (e.g. `invalid_grant`).
+#### `GET /api/calendars`
 
-#### `POST /api/auth/refresh`
-- Returns `401` when no Authorization header is present.
-- Returns `401` when no refresh token is stored for the requesting user.
-- Returns a new `access_token` and `expiry_date` when a valid refresh token exists.
+- Returns `401` if local session JWT is invalid.
+- Proxies Google's calendar list response to the client.
 
-#### Settings persistence across logout / login
-- **Round-trip**: Saving settings then re-fetching (simulating a fresh login with the same identity) returns the data intact — including nested calendar config fields and all people records.
-- **User isolation**: Settings saved by one user are not visible to a different user.
+#### `GET /api/events`
 
----
-
-## Frontend Tests
-
-### `src/services/__tests__/googleCalendar.test.js`
-
-#### `fetchCalendars`
-- Throws if no access token is provided.
-- Returns an empty array when the API returns no items.
-- Returns items from the API response.
-- Throws a descriptive error on a non-OK response.
-
-#### `fetchEvents`
-- Throws if no access token is provided.
-- Returns `[]` immediately for an empty `calendarIds` list (no network call made).
-- Stamps each event with its source `_calendarId`.
-- **Deduplication**: An event shared across two calendars appears exactly once.
-- Keeps distinct events from multiple calendars.
-- **Filtering**: Discards events with `visibility: "private"`.
-- **Filtering**: Discards events with `#ignore` in their description.
+- Returns `401` if local session JWT is invalid.
+- Proxies Google's event list for selected calendars.
+- **Deduplication**: Merges events shared across multiple calendars.
+- **Filtering**: Discards private and `#ignore` events server-side.
 - **Sorting**: Returns events in chronological order.
 - Handles all-day events (`start.date` only) without crashing.
 - **Graceful degradation**: Still returns events from healthy calendars when one calendar fetch fails.
 - Appends a hashtag `q` query param when the calendar has a hashtag config.
 - Does not append `q` when no hashtag is configured.
 
+#### Settings persistence across logout / login
+
+- **Round-trip**: Saving settings then re-fetching (simulating a fresh login with the same identity) returns the data intact — including nested calendar config fields and all people records.
+- **User isolation**: Settings saved by one user are not visible to a different user.
+
 ---
+
+### `server/__tests__/crypto.test.js`
+
+- Encrypts and decrypts a string correctly.
+- Produces different ciphertext for the same input (randomized IV).
+- Returns `null` on decryption with a wrong key.
+- Returns `null` when the ciphertext is corrupted.
+
+---
+
+## Frontend Tests
 
 ### `src/utils/__tests__/eventEnrichment.test.js`
 
-Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities extracted from `App.jsx`.
+Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 #### `annotateEvents`
+
 - Prepends the calendar emoji to the event summary.
 - Does not modify summary when no emoji is configured.
 - Does not crash when the event has no summary.
@@ -86,6 +90,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities extrac
 - Does not mutate the original event objects.
 
 #### `filterHiddenAttendees`
+
 - Removes attendees whose person record has `show: false`.
 - Keeps attendees who are visible (`show: true`).
 - Keeps attendees not found in `peopleDB` (external guests).
@@ -94,21 +99,31 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities extrac
 ---
 
 ### `src/components/__tests__/CalendarHeader.test.jsx`
+
 - Renders correctly for a week within the same month.
 - Renders correctly across a month boundary.
 - Renders correctly across a year boundary.
 - Calls `onNext`, `onPrev`, `onToday`, and `onRefresh` when navigation buttons are clicked.
 
+---
+
 ### `src/components/__tests__/AttendeeEditor.test.jsx`
+
 - Does not render when `isOpen={false}`.
 - Renders existing people and allows adding a new person.
 - Allows editing a person's name and emits the updated data via `onSave`.
 
+---
+
 ### `src/components/__tests__/DebugModal.test.jsx`
+
 - Loads `localStorage` data into the editing textarea.
 - Saves edited JSON to `localStorage` and calls `onBackendSave`.
 
+---
+
 ### `src/components/__tests__/CalendarSelectorModal.test.jsx`
+
 - Does not render when `isOpen={false}`.
 - Renders a checkbox for each calendar.
 - Sorts calendars alphabetically.
@@ -125,7 +140,10 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities extrac
 - Removes the `emoji` key entirely (rather than setting it to `""`) when the field is cleared.
 - Shows the person dropdown when a calendar is selected and people exist.
 
+---
+
 ### `src/components/__tests__/WeekGrid.test.jsx`
+
 - Always renders exactly 7 day columns.
 - Week starts on Monday.
 - Week ends on Sunday.
@@ -136,7 +154,10 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities extrac
 - Ignores events that fall outside the current week.
 - Correctly calculates the week when the current day is Sunday (edge case).
 
+---
+
 ### `src/components/__tests__/EventCard.test.jsx`
+
 - Renders the event summary.
 - Shows "Untitled Event" when summary is missing.
 - Shows "All Day" when the event has no `start.dateTime`.

@@ -1,6 +1,6 @@
 # Family Calendar
 
-Family Calendar is a helpful web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view. 
+Family Calendar is a helpful web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view.
 
 ## Features
 
@@ -18,10 +18,10 @@ Family Calendar is a helpful web application that allows you to seamlessly unify
 ## Technology Stack
 
 - **Frontend:** React + Vite
-- **Backend:** Node.js + Express
+- **Backend:** Node.js + Express + `jsonwebtoken`
 - **Database:** SQLite
-- **Styling:** Vanilla CSS 
-- **Google API Integration:** `@react-oauth/google` & Native Fetch API
+- **Styling:** Vanilla CSS
+- **Google API Integration:** `@react-oauth/google` (auth-code flow, server-side proxied)
 
 ## Getting Started
 
@@ -41,7 +41,10 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
    GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
    ADMIN_EMAIL="YOUR_EMAIL_ADDRESS"
+   TOKEN_ENCRYPTION_KEY="[random-64-char-hex-string]"
+   JWT_SECRET="[your-random-session-secret]"
    ```
+   _Note: Use a secure random string for `TOKEN_ENCRYPTION_KEY` and `JWT_SECRET` in production!_
    Both the Client ID and Client Secret can be found in your [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
 4. Start both the Vite development server and the Express backend concurrently:
    ```bash
@@ -56,8 +59,6 @@ Alternatively, you can run the application directly for production using Docker 
 Here is an example `docker-compose.yml` configuration:
 
 ```yaml
-version: '3.8'
-
 services:
   family-calendar:
     image: ghcr.io/ajma/family-calendar:latest
@@ -68,6 +69,8 @@ services:
       - GOOGLE_CLIENT_ID=[YOUR_GOOGLE_CLIENT_ID]
       - GOOGLE_CLIENT_SECRET=[YOUR_GOOGLE_CLIENT_SECRET]
       - ADMIN_EMAIL=[EMAIL_ADDRESS]
+      - TOKEN_ENCRYPTION_KEY=[random-64-char-hex-string]
+      - JWT_SECRET=[your-random-session-secret]
     volumes:
       - ./server_data:/app/server
 ```
@@ -85,9 +88,10 @@ Run `docker compose up -d` to start the application. Note that the image must be
 
 ## Testing
 
-This project includes a comprehensive test suite covering the backend API, Google Calendar service, event annotation logic, and all major UI components. For a detailed breakdown, refer to the [Test Suite Coverage documentation](./docs/TESTS.md).
+This project includes a comprehensive test suite covering the backend API, event annotation logic, and all major UI components. For a detailed breakdown, refer to the [Test Suite Coverage documentation](./docs/TESTS.md).
 
 To run the test suite locally:
+
 ```bash
 npm run test
 ```

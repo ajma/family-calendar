@@ -5,8 +5,7 @@ import WeekGrid from './components/WeekGrid';
 import AttendeeEditor from './components/AttendeeEditor';
 import CalendarSelectorModal from './components/CalendarSelectorModal';
 import DebugModal from './components/DebugModal';
-import { fetchEvents, fetchCalendars } from './services/googleCalendar';
-import { fetchSettings, saveSettings, resetSettings, exchangeCode, refreshAccessToken } from './services/backend';
+import { fetchSettings, saveSettings, resetSettings, exchangeCode, fetchCalendars, fetchEvents } from './services/backend';
 import { annotateEvents, filterHiddenAttendees } from './utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
@@ -29,12 +28,7 @@ function App() {
     }
   });
   const [loading, setLoading] = useState(false);
-  const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
-  // Expiry is a Unix timestamp in ms (matches Google's expiry_date field)
-  const [tokenExpiry, setTokenExpiry] = useState(() => {
-    const saved = localStorage.getItem('oauth_expiry');
-    return saved ? parseInt(saved, 10) : null;
-  });
+  const [sessionToken, setSessionToken] = useState(localStorage.getItem('session_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
@@ -51,9 +45,9 @@ function App() {
 
   useEffect(() => {
     const loadUserData = async () => {
-      if (!accessToken) return;
+      if (!sessionToken) return;
       try {
-        const settings = await fetchSettings(accessToken);
+        const settings = await fetchSettings(sessionToken);
         setIsAdmin(!!settings.isAdmin);
         if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
           setCalendarConfigs(settings.calendarConfigs);
@@ -68,7 +62,7 @@ function App() {
       }
     };
     loadUserData();
-  }, [accessToken]);
+  }, [sessionToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -83,11 +77,9 @@ function App() {
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
       try {
-        const { access_token, expiry_date } = await exchangeCode(codeResponse.code);
-        setAccessToken(access_token);
-        setTokenExpiry(expiry_date);
-        localStorage.setItem('oauth_token', access_token);
-        localStorage.setItem('oauth_expiry', expiry_date.toString());
+        const { session_token } = await exchangeCode(codeResponse.code);
+        setSessionToken(session_token);
+        localStorage.setItem('session_token', session_token);
         setErrorMSG(null);
       } catch (e) {
         console.error('Token exchange failed', e);
@@ -103,8 +95,7 @@ function App() {
 
   const logout = () => {
     googleLogout();
-    setAccessToken(null);
-    setTokenExpiry(null);
+    setSessionToken(null);
     setEvents([]);
     setCalendars([]);
     setCalendarConfigs({});
@@ -113,68 +104,44 @@ function App() {
     setCurrentDate(new Date());
     localStorage.clear();
   };
-  // Silent token refresh: fires ~5 minutes before the access token expires
-  // so the user never hits the 1-hour wall mid-session.
+
+  // Listen for API 401/403 responses from any service call and auto-logout.
   useEffect(() => {
-    if (!accessToken || !tokenExpiry) return;
-
-    const msUntilRefresh = tokenExpiry - Date.now() - 5 * 60 * 1000;
-
-    const doRefresh = async () => {
-      try {
-        const { access_token, expiry_date } = await refreshAccessToken(accessToken);
-        setAccessToken(access_token);
-        setTokenExpiry(expiry_date);
-        localStorage.setItem('oauth_token', access_token);
-        localStorage.setItem('oauth_expiry', expiry_date.toString());
-      } catch (e) {
-        console.error('Silent token refresh failed, logging out:', e);
-        logout();
-        setErrorMSG('Your session expired. Please sign in again.');
-      }
+    const handleUnauthorized = () => {
+      console.warn('Received api-unauthorized event — logging out.');
+      logout();
+      setErrorMSG('Your session expired. Please sign in again.');
     };
-
-    if (msUntilRefresh <= 0) {
-      // Token is already close to / past expiry — refresh immediately
-      doRefresh();
-      return;
-    }
-
-    const timer = setTimeout(doRefresh, msUntilRefresh);
-    return () => clearTimeout(timer);
-  }, [accessToken, tokenExpiry]);
+    window.addEventListener('api-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
+  }, []);
 
   // Centralised dual write-through: always keeps localStorage and the
   // backend in sync in one place instead of scattered across handlers.
   const persistSettings = async (configs, people) => {
     localStorage.setItem('calendar_configs', JSON.stringify(configs));
     localStorage.setItem('people', JSON.stringify(people));
-    if (accessToken) {
-      await saveSettings(accessToken, configs, people);
+    if (sessionToken) {
+      await saveSettings(sessionToken, configs, people);
     }
   };
 
   const handleFullReset = async () => {
-    if (accessToken) {
-      await resetSettings(accessToken);
+    if (sessionToken) {
+      await resetSettings(sessionToken);
     }
     setIsDebugModalOpen(false);
     logout();
   };
 
   const loadCalendars = async () => {
-    if (!accessToken) return;
+    if (!sessionToken) return;
     try {
-      const data = await fetchCalendars(accessToken);
+      const data = await fetchCalendars(sessionToken);
       setCalendars(data);
 
       const primaryCal = data.find(c => c.primary);
       if (primaryCal) {
-        // Use functional update so `prev` reflects the latest committed state
-        // at setter-call time — not the stale closure value. This is critical
-        // because loadUserData (which populates calendarConfigs from the DB)
-        // and loadCalendars (which hits the Google API) race against each other.
-        // If loadUserData wins, prev will already have selections and we bail out.
         setCalendarConfigs(prev => {
           const hasSelections = Object.values(prev).some(config => config.selected);
           if (!hasSelections) {
@@ -194,7 +161,7 @@ function App() {
   };
 
   const loadEvents = async () => {
-    if (!accessToken) return;
+    if (!sessionToken) return;
 
     setLoading(true);
     setErrorMSG(null);
@@ -211,18 +178,7 @@ function App() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      // Extract hashtags for fetching
-      const fetchHashtags = Object.entries(calendarConfigs).reduce((acc, [calId, config]) => {
-        if (config.hashtag) acc[calId] = config.hashtag;
-        return acc;
-      }, {});
-
-      // Extract selected calendars for fetching
-      const selectedCalendars = Object.entries(calendarConfigs)
-        .filter(([_, config]) => config.selected)
-        .map(([calId, _]) => calId);
-
-      let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString(), fetchHashtags);
+      let eventsData = await fetchEvents(sessionToken, startOfWeek.toISOString(), endOfWeek.toISOString());
 
       // Use peopleDB state directly — avoids stale reads from localStorage
       const existingPeople = peopleDB;
@@ -278,29 +234,23 @@ function App() {
 
     } catch (error) {
       console.error('Failed to load events', error);
-      if (error.message.includes('401') || error.message.includes('403')) {
-        // Token might be expired
-        logout();
-        setErrorMSG('Session expired. Please log in again.');
-      } else {
-        setErrorMSG(error.message);
-      }
+      setErrorMSG(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (accessToken) {
+    if (sessionToken) {
       loadCalendars();
     }
-  }, [accessToken]);
+  }, [sessionToken]);
 
   useEffect(() => {
-    if (accessToken) {
+    if (sessionToken) {
       loadEvents();
     }
-  }, [currentDate, accessToken, calendarConfigs]);
+  }, [currentDate, sessionToken, calendarConfigs]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -345,7 +295,7 @@ function App() {
       <header className="app-header">
         <h1>Family <span className="highlight-text">Calendar</span></h1>
 
-        {accessToken && (
+        {sessionToken && (
           <CalendarHeader
             currentDate={currentDate}
             onPrev={handlePrevWeek}
@@ -356,15 +306,15 @@ function App() {
         )}
 
         <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
-          {accessToken && calendars.length > 0 && (
+          {sessionToken && calendars.length > 0 && (
             <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
           )}
 
-          {accessToken && (
+          {sessionToken && (
             <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
           )}
 
-          {accessToken ? (
+          {sessionToken ? (
             <button className="control-btn glass" onClick={logout}>Sign Out</button>
           ) : (
             <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
@@ -379,7 +329,7 @@ function App() {
           </div>
         )}
 
-        {!accessToken ? (
+        {!sessionToken ? (
           <div className="empty-state" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
             Please sign in to view your calendar events.
           </div>
@@ -407,7 +357,7 @@ function App() {
         onSave={handleSaveCalendars}
       />
 
-      {isDebugMode && accessToken && isAdmin && (
+      {isDebugMode && sessionToken && isAdmin && (
         <>
           <button
             onClick={() => setIsDebugModalOpen(true)}
@@ -440,8 +390,8 @@ function App() {
             isOpen={isDebugModalOpen}
             onClose={() => setIsDebugModalOpen(false)}
             onBackendSave={async (configs, people) => {
-              if (accessToken) {
-                await saveSettings(accessToken, configs, people);
+              if (sessionToken) {
+                await saveSettings(sessionToken, configs, people);
               }
             }}
             onFullReset={handleFullReset}
