@@ -15,7 +15,7 @@ export async function getDb() {
 
     const dbFile = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
     dbInstance = await open({
-        filename: path.join(__dirname, dbFile),
+        filename: path.join(__dirname, '..', 'data', dbFile),
         driver: sqlite3.Database
     });
     return dbInstance;

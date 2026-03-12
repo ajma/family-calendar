@@ -72,7 +72,7 @@ services:
       - TOKEN_ENCRYPTION_KEY=[random-64-char-hex-string]
       - JWT_SECRET=[your-random-session-secret]
     volumes:
-      - ./server_data:/app/server
+      - ./data:/app/data
 ```
 
 Run `docker compose up -d` to start the application. Note that the image must be built and published to your GitHub Container Registry, or you can build it locally.

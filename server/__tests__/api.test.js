@@ -25,7 +25,7 @@ describe('Backend API Tests', () => {
     afterAll(async () => {
         try {
             await closeDb();
-            await unlink(path.join(__dirname, '../database.test.sqlite'));
+            await unlink(path.join(__dirname, '../../data/database.test.sqlite'));
         } catch (e) {
             console.error('Failed to cleanup test DB', e);
         }

@@ -32,7 +32,7 @@ COPY server/ ./server/
 COPY --from=build /app/dist ./dist
 
 # Create a volume for the SQLite database so settings persist across container restarts
-VOLUME ["/app/server"]
+VOLUME ["/app/data"]
 
 # Set environment variables
 ENV NODE_ENV=production
