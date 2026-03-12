@@ -291,7 +291,8 @@ function App() {
   };
 
   return (
-    <div className="app-container glass">
+    <>
+      <div className="app-container glass">
       <header className="app-header">
         <h1>Family <span className="highlight-text">Calendar</span></h1>
 
@@ -398,7 +399,11 @@ function App() {
           />
         </>
       )}
-    </div>
+      </div>
+      <footer className="version-label">
+        v{import.meta.env.PACKAGE_VERSION}
+      </footer>
+    </>
   );
 }
 

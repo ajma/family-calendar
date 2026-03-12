@@ -71,3 +71,14 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-color);
 }
+
+.version-label {
+  text-align: right;
+  padding: 1rem 2rem 2rem 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  opacity: 0.5;
+  font-weight: 500;
+  user-select: none;
+}
