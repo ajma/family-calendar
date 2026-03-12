@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { encrypt, decrypt } from './crypto.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,6 +84,9 @@ export async function saveUserSettings(userId, calendarConfigs, people) {
  */
 export async function saveUserTokens(userId, accessToken, refreshToken, tokenExpiry) {
     const db = await getDb();
+    const encryptedAccess = accessToken ? encrypt(accessToken) : null;
+    const encryptedRefresh = refreshToken ? encrypt(refreshToken) : null;
+    
     await db.run(
         `INSERT INTO user_settings (id, access_token, refresh_token, token_expiry)
      VALUES (?, ?, ?, ?)
@@ -90,7 +94,7 @@ export async function saveUserTokens(userId, accessToken, refreshToken, tokenExp
        access_token   = excluded.access_token,
        refresh_token  = COALESCE(excluded.refresh_token, user_settings.refresh_token),
        token_expiry   = excluded.token_expiry`,
-        [userId, accessToken, refreshToken ?? null, tokenExpiry ?? null]
+        [userId, encryptedAccess, encryptedRefresh, tokenExpiry ?? null]
     );
 }
 
@@ -106,8 +110,8 @@ export async function getUserTokens(userId) {
     );
     if (!result) return null;
     return {
-        accessToken:  result.access_token,
-        refreshToken: result.refresh_token,
+        accessToken:  result.access_token ? decrypt(result.access_token) : null,
+        refreshToken: result.refresh_token ? decrypt(result.refresh_token) : null,
         tokenExpiry:  result.token_expiry,
     };
 }
