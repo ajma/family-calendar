@@ -6,7 +6,7 @@ import AttendeeEditor from './components/AttendeeEditor';
 import CalendarSelectorModal from './components/CalendarSelectorModal';
 import DebugModal from './components/DebugModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
-import { fetchSettings, saveSettings, resetSettings } from './services/backend';
+import { fetchSettings, saveSettings, resetSettings, exchangeCode, refreshAccessToken } from './services/backend';
 import { annotateEvents, filterHiddenAttendees } from './utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
@@ -30,6 +30,11 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('oauth_token') || null);
+  // Expiry is a Unix timestamp in ms (matches Google's expiry_date field)
+  const [tokenExpiry, setTokenExpiry] = useState(() => {
+    const saved = localStorage.getItem('oauth_expiry');
+    return saved ? parseInt(saved, 10) : null;
+  });
   const [errorMSG, setErrorMSG] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
@@ -73,10 +78,21 @@ function App() {
   }, []);
 
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      setAccessToken(tokenResponse.access_token);
-      localStorage.setItem('oauth_token', tokenResponse.access_token);
-      setErrorMSG(null);
+    // auth-code flow: the backend exchanges the code for tokens and stores
+    // the refresh token, so the frontend never handles it directly.
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      try {
+        const { access_token, expiry_date } = await exchangeCode(codeResponse.code);
+        setAccessToken(access_token);
+        setTokenExpiry(expiry_date);
+        localStorage.setItem('oauth_token', access_token);
+        localStorage.setItem('oauth_expiry', expiry_date.toString());
+        setErrorMSG(null);
+      } catch (e) {
+        console.error('Token exchange failed', e);
+        setErrorMSG('Login failed. Please try again.');
+      }
     },
     onError: (error) => {
       console.error('Login Failed', error);
@@ -88,6 +104,7 @@ function App() {
   const logout = () => {
     googleLogout();
     setAccessToken(null);
+    setTokenExpiry(null);
     setEvents([]);
     setCalendars([]);
     setCalendarConfigs({});
@@ -96,6 +113,36 @@ function App() {
     setCurrentDate(new Date());
     localStorage.clear();
   };
+  // Silent token refresh: fires ~5 minutes before the access token expires
+  // so the user never hits the 1-hour wall mid-session.
+  useEffect(() => {
+    if (!accessToken || !tokenExpiry) return;
+
+    const msUntilRefresh = tokenExpiry - Date.now() - 5 * 60 * 1000;
+
+    const doRefresh = async () => {
+      try {
+        const { access_token, expiry_date } = await refreshAccessToken(accessToken);
+        setAccessToken(access_token);
+        setTokenExpiry(expiry_date);
+        localStorage.setItem('oauth_token', access_token);
+        localStorage.setItem('oauth_expiry', expiry_date.toString());
+      } catch (e) {
+        console.error('Silent token refresh failed, logging out:', e);
+        logout();
+        setErrorMSG('Your session expired. Please sign in again.');
+      }
+    };
+
+    if (msUntilRefresh <= 0) {
+      // Token is already close to / past expiry — refresh immediately
+      doRefresh();
+      return;
+    }
+
+    const timer = setTimeout(doRefresh, msUntilRefresh);
+    return () => clearTimeout(timer);
+  }, [accessToken, tokenExpiry]);
 
   // Centralised dual write-through: always keeps localStorage and the
   // backend in sync in one place instead of scattered across handlers.

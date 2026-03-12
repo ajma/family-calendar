@@ -27,7 +27,7 @@ Family Calendar is a helpful web application that allows you to seamlessly unify
 
 ### Prerequisites
 
-You must have a Google Cloud Platform account with the **Google Calendar API** enabled. You'll need to create OAuth 2.0 Client credentials authorized for `http://localhost:5173`.
+You must have a Google Cloud Platform account with the **Google Calendar API** enabled. You'll need to create OAuth 2.0 Client credentials (type: **Web application**) authorized for `http://localhost:5173`.
 
 ### Installation
 
@@ -39,7 +39,10 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
 3. Create a `.env` file in the root directory (where `package.json` is located) and populate it with your Google credentials:
    ```env
    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
+   GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
+   ADMIN_EMAIL="YOUR_EMAIL_ADDRESS"
    ```
+   Both the Client ID and Client Secret can be found in your [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
 4. Start both the Vite development server and the Express backend concurrently:
    ```bash
    npm run dev
@@ -63,6 +66,7 @@ services:
       - "5173:5173"
     environment:
       - GOOGLE_CLIENT_ID=[YOUR_GOOGLE_CLIENT_ID]
+      - GOOGLE_CLIENT_SECRET=[YOUR_GOOGLE_CLIENT_SECRET]
       - ADMIN_EMAIL=[EMAIL_ADDRESS]
     volumes:
       - ./server_data:/app/server
@@ -81,7 +85,7 @@ Run `docker compose up -d` to start the application. Note that the image must be
 
 ## Testing
 
-This project includes a comprehensive test suite. For a detailed breakdown of the implemented tests and their coverage, please refer to the [Test Suite Coverage documentation](./docs/TESTS.md).
+This project includes a comprehensive test suite covering the backend API, Google Calendar service, event annotation logic, and all major UI components. For a detailed breakdown, refer to the [Test Suite Coverage documentation](./docs/TESTS.md).
 
 To run the test suite locally:
 ```bash

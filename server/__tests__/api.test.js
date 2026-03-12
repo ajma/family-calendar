@@ -201,5 +201,116 @@ describe('Backend API Tests', () => {
             });
         });
     });
+
+    // ── Auth endpoints ──────────────────────────────────────────────────────
+
+    describe('POST /api/auth/exchange', () => {
+        it('should return 400 if no code is provided', async () => {
+            const res = await request(app).post('/api/auth/exchange').send({});
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/code/i);
+        });
+
+        it('should exchange a code and return access_token + expiry_date', async () => {
+            const { OAuth2Client } = await import('google-auth-library');
+            const newExpiry = Date.now() + 3600 * 1000;
+            vi.spyOn(OAuth2Client.prototype, 'getToken').mockResolvedValue({
+                tokens: {
+                    access_token: 'new_access_token',
+                    refresh_token: 'new_refresh_token',
+                    expiry_date: newExpiry,
+                }
+            });
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'test@example.com' })
+            });
+
+            const res = await request(app)
+                .post('/api/auth/exchange')
+                .send({ code: 'fake_auth_code' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.access_token).toBe('new_access_token');
+            expect(res.body.expiry_date).toBeGreaterThan(Date.now());
+            vi.restoreAllMocks();
+        });
+
+        it('should return 500 if Google token exchange fails', async () => {
+            const { OAuth2Client } = await import('google-auth-library');
+            vi.spyOn(OAuth2Client.prototype, 'getToken').mockRejectedValue(new Error('invalid_grant'));
+
+            const res = await request(app)
+                .post('/api/auth/exchange')
+                .send({ code: 'bad_code' });
+
+            expect(res.status).toBe(500);
+            expect(res.body.error).toMatch(/exchange/i);
+            vi.restoreAllMocks();
+        });
+    });
+
+    describe('POST /api/auth/refresh', () => {
+        it('should return 401 if no Authorization header is present', async () => {
+            const res = await request(app).post('/api/auth/refresh');
+            expect(res.status).toBe(401);
+        });
+
+        it('should return 401 if no refresh token is stored for that user', async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'norefresh@example.com' })
+            });
+
+            const res = await request(app)
+                .post('/api/auth/refresh')
+                .set('Authorization', 'Bearer valid_token');
+
+            expect(res.status).toBe(401);
+            expect(res.body.error).toMatch(/refresh token/i);
+
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'test@example.com' })
+            });
+        });
+
+        it('should return a new access_token when a valid refresh token is stored', async () => {
+            const { OAuth2Client } = await import('google-auth-library');
+            const newExpiry = Date.now() + 3600 * 1000;
+
+            // First, seed a refresh token via exchange
+            vi.spyOn(OAuth2Client.prototype, 'getToken').mockResolvedValue({
+                tokens: {
+                    access_token: 'original_access_token',
+                    refresh_token: 'stored_refresh_token',
+                    expiry_date: newExpiry,
+                }
+            });
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'refresh_user@example.com' })
+            });
+            await request(app).post('/api/auth/exchange').send({ code: 'valid_code' });
+
+            // Now mock the refresh and call the endpoint
+            vi.spyOn(OAuth2Client.prototype, 'refreshAccessToken').mockResolvedValue({
+                credentials: {
+                    access_token: 'refreshed_access_token',
+                    expiry_date: Date.now() + 3600 * 1000,
+                }
+            });
+
+            const res = await request(app)
+                .post('/api/auth/refresh')
+                .set('Authorization', 'Bearer original_access_token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.access_token).toBe('refreshed_access_token');
+            expect(res.body.expiry_date).toBeGreaterThan(Date.now());
+            vi.restoreAllMocks();
+        });
+    });
 });
+
 

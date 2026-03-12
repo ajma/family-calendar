@@ -27,9 +27,10 @@ export async function closeDb() {
     }
 }
 
-// Ensure tables exist
+// Ensure tables exist and run any pending column migrations
 export async function initializeDb() {
     const db = await getDb();
+
     await db.exec(`
     CREATE TABLE IF NOT EXISTS user_settings (
       id TEXT PRIMARY KEY,
@@ -37,6 +38,20 @@ export async function initializeDb() {
       people TEXT
     )
   `);
+
+    // Migration: add token columns for refresh token support (safe to run on existing DBs)
+    for (const col of [
+        'refresh_token TEXT',
+        'access_token TEXT',
+        'token_expiry INTEGER',
+    ]) {
+        try {
+            await db.exec(`ALTER TABLE user_settings ADD COLUMN ${col}`);
+        } catch {
+            // Column already exists — safe to ignore
+        }
+    }
+
     return db;
 }
 
@@ -46,20 +61,55 @@ export async function getUserSettings(userId) {
     if (!result) return null;
     return {
         calendarConfigs: result.calendar_configs ? JSON.parse(result.calendar_configs) : null,
-        people: result.people ? JSON.parse(result.people) : null
+        people: result.people ? JSON.parse(result.people) : null,
     };
 }
 
 export async function saveUserSettings(userId, calendarConfigs, people) {
     const db = await getDb();
     await db.run(
-        `INSERT INTO user_settings (id, calendar_configs, people) 
-     VALUES (?, ?, ?) 
-     ON CONFLICT(id) DO UPDATE SET 
+        `INSERT INTO user_settings (id, calendar_configs, people)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
        calendar_configs = excluded.calendar_configs,
        people = excluded.people`,
         [userId, JSON.stringify(calendarConfigs || {}), JSON.stringify(people || [])]
     );
+}
+
+/**
+ * Save (or update) the OAuth tokens for a user.
+ * Called after a successful code exchange or token refresh.
+ */
+export async function saveUserTokens(userId, accessToken, refreshToken, tokenExpiry) {
+    const db = await getDb();
+    await db.run(
+        `INSERT INTO user_settings (id, access_token, refresh_token, token_expiry)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       access_token   = excluded.access_token,
+       refresh_token  = COALESCE(excluded.refresh_token, user_settings.refresh_token),
+       token_expiry   = excluded.token_expiry`,
+        [userId, accessToken, refreshToken ?? null, tokenExpiry ?? null]
+    );
+}
+
+/**
+ * Retrieve stored OAuth tokens for a user.
+ * Returns null if no record exists.
+ */
+export async function getUserTokens(userId) {
+    const db = await getDb();
+    const result = await db.get(
+        'SELECT access_token, refresh_token, token_expiry FROM user_settings WHERE id = ?',
+        [userId]
+    );
+    if (!result) return null;
+    return {
+        accessToken:  result.access_token,
+        refreshToken: result.refresh_token,
+        tokenExpiry:  result.token_expiry,
+    };
 }
 
 export async function clearAllUserSettings() {

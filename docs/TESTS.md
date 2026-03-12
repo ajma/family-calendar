@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 79 tests across 9 files.**
+**Total: 85 tests across 9 files.**
 
 To run:
 ```bash
@@ -25,6 +25,16 @@ npm run test
 #### `POST /api/settings/reset`
 - Returns `403` for non-admin users.
 - Wipes all settings when called by the configured `ADMIN_EMAIL`.
+
+#### `POST /api/auth/exchange`
+- Returns `400` when no auth code is provided.
+- Exchanges a valid code and returns `access_token` + `expiry_date`.
+- Returns `500` if Google's token exchange fails (e.g. `invalid_grant`).
+
+#### `POST /api/auth/refresh`
+- Returns `401` when no Authorization header is present.
+- Returns `401` when no refresh token is stored for the requesting user.
+- Returns a new `access_token` and `expiry_date` when a valid refresh token exists.
 
 #### Settings persistence across logout / login
 - **Round-trip**: Saving settings then re-fetching (simulating a fresh login with the same identity) returns the data intact — including nested calendar config fields and all people records.
