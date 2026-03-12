@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { encrypt, decrypt } from './crypto.js';
 
@@ -14,8 +15,13 @@ export async function getDb() {
     if (dbInstance) return dbInstance;
 
     const dbFile = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
+    const dbDir = path.join(__dirname, '..', 'data');
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+
     dbInstance = await open({
-        filename: path.join(__dirname, '..', 'data', dbFile),
+        filename: path.join(dbDir, dbFile),
         driver: sqlite3.Database
     });
     return dbInstance;

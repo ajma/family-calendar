@@ -2,32 +2,35 @@ name: Test Suite
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v6
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '24.x'
-        cache: 'npm'
-        
-    - name: Install required dependencies
-      run: npm ci
-      
-    - name: Run Tests
-      run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results.xml
 
-    - name: Test Summary
-      uses: test-summary/action@v2.4
-      if: always()
-      with:
-        paths: 'test-results.xml'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+          cache: "npm"
+
+      - name: Install required dependencies
+        run: npm ci
+
+      - name: Run Tests
+        run: npx vitest run --reporter=default --reporter=junit --outputFile=test-results.xml
+        env:
+          TOKEN_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          JWT_SECRET: test-secret
+
+      - name: Test Summary
+        uses: test-summary/action@v2.4
+        if: always()
+        with:
+          paths: "test-results.xml"
