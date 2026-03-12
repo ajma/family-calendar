@@ -19,7 +19,7 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
             const data = {};
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key === 'oauth_token') continue;
+                if (key === 'session_token') continue;
 
                 const value = localStorage.getItem(key);
                 try {
@@ -39,12 +39,12 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
     const handleSave = () => {
         try {
             const parsed = JSON.parse(localStoreState);
-            const currentToken = localStorage.getItem('oauth_token');
+            const currentToken = localStorage.getItem('session_token');
 
             localStorage.clear();
 
             if (currentToken) {
-                localStorage.setItem('oauth_token', currentToken);
+                localStorage.setItem('session_token', currentToken);
             }
 
             for (const [key, value] of Object.entries(parsed)) {
