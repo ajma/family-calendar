@@ -7,6 +7,7 @@ import CalendarSelectorModal from './components/CalendarSelectorModal';
 import DebugModal from './components/DebugModal';
 import { fetchEvents, fetchCalendars } from './services/googleCalendar';
 import { fetchSettings, saveSettings, resetSettings } from './services/backend';
+import { annotateEvents, filterHiddenAttendees } from './utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from './constants';
 import './index.css';
 import './styles/calendar.css';
@@ -179,46 +180,8 @@ function App() {
       // Use peopleDB state directly — avoids stale reads from localStorage
       const existingPeople = peopleDB;
 
-      // Auto-assign attendees based on calendar assignments
-      eventsData = eventsData.map(event => {
-        const config = calendarConfigs[event._calendarId] || {};
-        const assignedEmail = config.assignment;
-        const calendarEmoji = config.emoji;
-
-        let updatedEvent = { ...event };
-
-        if (calendarEmoji && updatedEvent.summary) {
-          updatedEvent.summary = `${calendarEmoji} ${updatedEvent.summary}`;
-        }
-
-        if (assignedEmail) {
-          const person = existingPeople.find(p => p.email === assignedEmail);
-          const attendees = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
-          if (person && !attendees.some(a => a.email === assignedEmail)) {
-            attendees.push({ email: person.email, displayName: person.name || person.email, responseStatus: 'accepted' });
-            updatedEvent.attendees = attendees;
-          }
-        }
-
-        // Check for #allfamily in the event description
-        if (updatedEvent.description && updatedEvent.description.toLowerCase().includes('#allfamily')) {
-          const attendees = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
-          let attendeesModified = false;
-
-          existingPeople.forEach(person => {
-            if (!attendees.some(a => a.email === person.email)) {
-              attendees.push({ email: person.email, displayName: person.name || person.email, responseStatus: 'accepted' });
-              attendeesModified = true;
-            }
-          });
-
-          if (attendeesModified) {
-            updatedEvent.attendees = attendees;
-          }
-        }
-
-        return updatedEvent;
-      });
+      // Annotate events with emoji prefixes, auto-assigned attendees, and #allfamily expansion
+      eventsData = annotateEvents(eventsData, calendarConfigs, existingPeople);
 
       // format events to match what the UI expects if needed
 
@@ -376,14 +339,7 @@ function App() {
         ) : loading ? (
           <div className="loading-state glass" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading your schedule...</div>
         ) : (() => {
-          const filteredEvents = events.map(event => {
-            if (!event.attendees) return event;
-            const filteredAttendees = event.attendees.filter(att => {
-              const person = peopleDB.find(p => p.email === att.email);
-              return !(person && person.show === false);
-            });
-            return { ...event, attendees: filteredAttendees };
-          });
+          const filteredEvents = filterHiddenAttendees(events, peopleDB);
           return <WeekGrid currentDate={currentDate} events={filteredEvents} />;
         })()}
       </main>
