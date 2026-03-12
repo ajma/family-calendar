@@ -96,6 +96,16 @@ function App() {
     localStorage.clear();
   };
 
+  // Centralised dual write-through: always keeps localStorage and the
+  // backend in sync in one place instead of scattered across handlers.
+  const persistSettings = async (configs, people) => {
+    localStorage.setItem('calendar_configs', JSON.stringify(configs));
+    localStorage.setItem('people', JSON.stringify(people));
+    if (accessToken) {
+      await saveSettings(accessToken, configs, people);
+    }
+  };
+
   const handleFullReset = async () => {
     if (accessToken) {
       await resetSettings(accessToken);
@@ -112,20 +122,19 @@ function App() {
 
       const primaryCal = data.find(c => c.primary);
       if (primaryCal) {
+        // Use functional update so `prev` reflects the latest committed state
+        // at setter-call time — not the stale closure value. This is critical
+        // because loadUserData (which populates calendarConfigs from the DB)
+        // and loadCalendars (which hits the Google API) race against each other.
+        // If loadUserData wins, prev will already have selections and we bail out.
         setCalendarConfigs(prev => {
-          // If the configs object doesn't have any explicitly selected calendars yet...
           const hasSelections = Object.values(prev).some(config => config.selected);
-
           if (!hasSelections) {
             const newConfigs = {
               ...prev,
-              [primaryCal.id]: {
-                ...prev[primaryCal.id],
-                selected: true
-              }
+              [primaryCal.id]: { ...prev[primaryCal.id], selected: true }
             };
-            localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
-            saveSettings(accessToken, newConfigs, peopleDB).catch(e => console.error(e));
+            persistSettings(newConfigs, peopleDB).catch(e => console.error(e));
             return newConfigs;
           }
           return prev;
@@ -167,8 +176,8 @@ function App() {
 
       let eventsData = await fetchEvents(accessToken, selectedCalendars, startOfWeek.toISOString(), endOfWeek.toISOString(), fetchHashtags);
 
-      // Read existing people to use for assignment
-      const existingPeople = JSON.parse(localStorage.getItem('people') || '[]');
+      // Use peopleDB state directly — avoids stale reads from localStorage
+      const existingPeople = peopleDB;
 
       // Auto-assign attendees based on calendar assignments
       eventsData = eventsData.map(event => {
@@ -247,12 +256,11 @@ function App() {
       });
 
       const newPeopleDB = Array.from(peopleMap.values());
-      localStorage.setItem('people', JSON.stringify(newPeopleDB));
       setPeopleDB(newPeopleDB);
 
       if (newPeopleDB.length > existingPeople.length) {
         try {
-          await saveSettings(accessToken, calendarConfigs, newPeopleDB);
+          await persistSettings(calendarConfigs, newPeopleDB);
         } catch (e) {
           console.error('Failed to save discovered people', e);
         }
@@ -305,26 +313,20 @@ function App() {
   };
 
   const handleSaveAttendees = async (updatedPeople) => {
-    localStorage.setItem('people', JSON.stringify(updatedPeople));
     setPeopleDB(updatedPeople);
-    if (accessToken) {
-      try {
-        await saveSettings(accessToken, calendarConfigs, updatedPeople);
-      } catch (e) {
-        console.error('Error saving people to backend:', e);
-      }
+    try {
+      await persistSettings(calendarConfigs, updatedPeople);
+    } catch (e) {
+      console.error('Error saving people to backend:', e);
     }
   };
 
   const handleSaveCalendars = async (newConfigs) => {
     setCalendarConfigs(newConfigs);
-    localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
-    if (accessToken) {
-      try {
-        await saveSettings(accessToken, newConfigs, peopleDB);
-      } catch (e) {
-        console.error('Error saving calendars to backend:', e);
-      }
+    try {
+      await persistSettings(newConfigs, peopleDB);
+    } catch (e) {
+      console.error('Error saving calendars to backend:', e);
     }
   };
 

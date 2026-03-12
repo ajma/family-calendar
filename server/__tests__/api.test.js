@@ -125,4 +125,81 @@ describe('Backend API Tests', () => {
             });
         });
     });
+
+    describe('Settings persistence across logout / login', () => {
+        const savedSettings = {
+            calendarConfigs: {
+                'cal-work': { selected: true, emoji: '💼' },
+                'cal-family': { selected: false, assignment: 'alice@example.com' }
+            },
+            people: [
+                { email: 'alice@example.com', name: 'Alice', initials: 'AL', color: '#ff6b6b' },
+                { email: 'bob@example.com',   name: 'Bob',   initials: 'BO', color: '#4ecdc4' }
+            ]
+        };
+
+        it('should persist calendarConfigs and people after a logout/login cycle', async () => {
+            // ── Step 1: user is logged in and saves their settings ──────────
+            const putRes = await request(app)
+                .put('/api/settings')
+                .set('Authorization', 'Bearer fake_token')
+                .send(savedSettings);
+            expect(putRes.status).toBe(200);
+            expect(putRes.body.success).toBe(true);
+
+            // ── Step 2: user logs out ────────────────────────────────────────
+            // Logout is purely client-side (token discarded); the backend holds
+            // no session state, so nothing to call here.
+
+            // ── Step 3: user logs back in and fetches their settings ─────────
+            // The same Google token mock resolves to the same email, which
+            // mirrors what happens in the real app on a fresh login.
+            const getRes = await request(app)
+                .get('/api/settings')
+                .set('Authorization', 'Bearer fake_token');
+
+            expect(getRes.status).toBe(200);
+
+            // calendarConfigs must be restored exactly
+            expect(getRes.body.calendarConfigs).toEqual(savedSettings.calendarConfigs);
+
+            // people must be restored exactly
+            expect(getRes.body.people).toHaveLength(savedSettings.people.length);
+            expect(getRes.body.people).toEqual(
+                expect.arrayContaining(
+                    savedSettings.people.map(p => expect.objectContaining(p))
+                )
+            );
+        });
+
+        it('should keep each user\'s settings isolated from other users', async () => {
+            // Save settings for user A (already mocked as test@example.com)
+            await request(app)
+                .put('/api/settings')
+                .set('Authorization', 'Bearer token_a')
+                .send(savedSettings);
+
+            // Switch mock to a different user
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'other@example.com' })
+            });
+
+            // User B should get empty/default settings, not user A's data
+            const getRes = await request(app)
+                .get('/api/settings')
+                .set('Authorization', 'Bearer token_b');
+
+            expect(getRes.status).toBe(200);
+            expect(getRes.body.calendarConfigs).toEqual({});
+            expect(getRes.body.people).toEqual([]);
+
+            // Restore mock
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ email: 'test@example.com' })
+            });
+        });
+    });
 });
+
