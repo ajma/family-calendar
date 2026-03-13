@@ -7,13 +7,29 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
 
   useEffect(() => {
     // Sort alphabetically when opened
-    const sortedPeople = [...people].sort((a, b) => {
-      const nameA = a.name || a.email || '';
-      const nameB = b.name || b.email || '';
-      return nameA.localeCompare(nameB);
-    }).map(p => ({ ...p, _id: p.email + Math.random() })); // Add internal ID for stable keys
-    setLocalPeople(sortedPeople);
-  }, [people]);
+    if (isOpen) {
+      const sortedPeople = [...people].sort((a, b) => {
+        const nameA = a.name || a.email || '';
+        const nameB = b.name || b.email || '';
+        return nameA.localeCompare(nameB);
+      }).map(p => ({ ...p, _id: p.email + Math.random() })); // Add internal ID for stable keys
+      setLocalPeople(sortedPeople);
+    }
+  }, [isOpen, people]);
+
+  // Handle Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleChange = (id, field, value) => {
     setLocalPeople(prev => prev.map(p => {

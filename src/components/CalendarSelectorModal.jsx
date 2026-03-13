@@ -17,6 +17,25 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // If emoji picker is active, close it first. Otherwise close the modal.
+        if (activePickerId) {
+          setActivePickerId(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, activePickerId, onClose]);
+
   useEffect(() => {
     if (isOpen) {
       // Deep copy to avoid mutating props
