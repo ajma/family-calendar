@@ -39,4 +39,12 @@ describe('AttendeeEditor', () => {
         const savedData = onSave.mock.calls[0][0];
         expect(savedData[0].name).toBe('Bobby');
     });
+
+    it('closes when Escape key is pressed', () => {
+        const onClose = vi.fn();
+        render(<AttendeeEditor isOpen={true} people={[]} onSave={vi.fn()} onClose={onClose} />);
+        
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(onClose).toHaveBeenCalledOnce();
+    });
 });

@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 73 tests across 9 files.**
+**Total: 77 tests across 9 files.**
 
 To run:
 
@@ -116,13 +116,16 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Does not render when `isOpen={false}`.
 - Renders existing people and allows adding a new person.
 - Allows editing a person's name and emits the updated data via `onSave`.
+- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
 
 ---
 
 ### `src/components/__tests__/DebugModal.test.jsx`
 
-- Loads `localStorage` data into the editing textarea.
+- Loads only `calendar_configs` and `people` from `localStorage` into the textarea.
+- **Data Filtering**: Correctly handles loading and saving only the core data keys, ignoring tokens or library-specific metadata.
 - Saves edited JSON to `localStorage` and calls `onBackendSave`.
+- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
 
 ---
 
@@ -145,6 +148,8 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Shows a plus sign (`＋`) when no emoji is assigned.
 - Clears the emoji when "No Emoji" is clicked.
 - Shows the person dropdown when a calendar is selected and people exist.
+- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
+- **Two-Stage Escape**: Pressing **Escape** first closes the active emoji picker; a second press closes the modal.
 
 ---
 

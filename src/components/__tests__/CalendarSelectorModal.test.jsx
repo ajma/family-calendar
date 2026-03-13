@@ -189,4 +189,29 @@ describe('CalendarSelectorModal', () => {
     expect(screen.getByText('Alice')).toBeInTheDocument();
     expect(screen.getByText('Bob')).toBeInTheDocument();
   });
+
+  it('closes when Escape key is pressed', () => {
+    const onClose = vi.fn();
+    render(<CalendarSelectorModal {...defaultProps({ onClose })} />);
+    
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('closes only the emoji picker on first Escape press', () => {
+    const onClose = vi.fn();
+    const configs = { 'cal-work': { selected: true } };
+    render(<CalendarSelectorModal {...defaultProps({ onClose, calendarConfigs: configs })} />);
+    
+    // Open picker
+    fireEvent.click(screen.getByTitle('Pick an emoji'));
+    
+    // First escape should close picker, not call onClose
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+    
+    // Second escape should call onClose
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });

@@ -30,19 +30,20 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
 
     const loadLocalStorage = () => {
         try {
+            const keysToDebug = ['calendar_configs', 'people'];
             const data = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key === 'session_token') continue;
-
+            
+            keysToDebug.forEach(key => {
                 const value = localStorage.getItem(key);
-                try {
-                    // Attempt to parse JSON to pretty-print later
-                    data[key] = JSON.parse(value);
-                } catch {
-                    data[key] = value;
+                if (value !== null) {
+                    try {
+                        data[key] = JSON.parse(value);
+                    } catch {
+                        data[key] = value;
+                    }
                 }
-            }
+            });
+            
             setLocalStoreState(JSON.stringify(data, null, 2));
             setErrorMSG(null);
         } catch (error) {
@@ -53,21 +54,17 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
     const handleSave = () => {
         try {
             const parsed = JSON.parse(localStoreState);
-            const currentToken = localStorage.getItem('session_token');
+            const keysToDebug = ['calendar_configs', 'people'];
 
-            localStorage.clear();
-
-            if (currentToken) {
-                localStorage.setItem('session_token', currentToken);
-            }
-
-            for (const [key, value] of Object.entries(parsed)) {
-                // Stringify objects/arrays before storing
-                const valToStore = typeof value === 'object' && value !== null
-                    ? JSON.stringify(value)
-                    : String(value);
-                localStorage.setItem(key, valToStore);
-            }
+            // Only update the allowed keys
+            keysToDebug.forEach(key => {
+                if (parsed[key] !== undefined) {
+                    const valToStore = typeof parsed[key] === 'object' && parsed[key] !== null
+                        ? JSON.stringify(parsed[key])
+                        : String(parsed[key]);
+                    localStorage.setItem(key, valToStore);
+                }
+            });
 
             // Also try saving to the backend so it isn't overwritten on reload
             if (onBackendSave) {
@@ -92,7 +89,7 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
     return (
         <div className="modal-overlay">
             <div className="modal-content glass" style={{ maxWidth: '800px', width: '90%', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-                <h2>Debug LocalStorage</h2>
+                <h2>Debug Core Data</h2>
 
                 {errorMSG && (
                     <div style={{ padding: '1rem', color: '#ff7b72', background: 'rgba(255,123,114,0.1)', borderBottom: '1px solid var(--border-color)' }}>
@@ -102,8 +99,8 @@ const DebugModal = ({ isOpen, onClose, onBackendSave, onFullReset }) => {
 
                 <div style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                        Edit localStorage state directly. Warning: Malformed JSON or invalid data will break the application!
-                        Saving will reload the page to apply changes.
+                        Edit <code>calendar_configs</code> and <code>people</code> data directly. 
+                        Other keys are hidden for safety. Saving will reload the page.
                     </p>
                     <textarea
                         value={localStoreState}
