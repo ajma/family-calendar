@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
-import { annotateEvents } from '../utils/annotateEnrichment';
+import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
 
 export function useCalendarData(sessionToken) {
@@ -29,6 +29,7 @@ export function useCalendarData(sessionToken) {
   });
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState(localStorage.getItem('user_email') || '');
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Load initial settings
   useEffect(() => {
@@ -48,8 +49,11 @@ export function useCalendarData(sessionToken) {
           setPeopleDB(settings.people);
           localStorage.setItem('people', JSON.stringify(settings.people));
         }
+        setSettingsLoaded(true);
       } catch (e) {
         console.error('Failed to load settings from DB', e);
+        // Set to true even on error so we don't hang discovery forever
+        setSettingsLoaded(true);
       }
     };
     loadUserData();
@@ -109,32 +113,37 @@ export function useCalendarData(sessionToken) {
       setEvents(eventsData);
 
       // Discover new people from attendees
-      const peopleMap = new Map();
-      peopleDB.forEach(person => peopleMap.set(person.email, person));
-      let discoveredNew = false;
+      // Only run after settings are loaded to avoid recreating people that already exist in DB
+      if (settingsLoaded) {
+        const emailMap = buildEmailMap(peopleDB);
+        let discoveredNew = false;
+        const newPeopleList = [...peopleDB];
 
-      eventsData.forEach(event => {
-        if (event.attendees) {
-          event.attendees.forEach(attendee => {
-            if (attendee.email && !peopleMap.has(attendee.email)) {
-              discoveredNew = true;
-              const name = attendee.displayName || attendee.email;
-              const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-              const usedColors = Array.from(peopleMap.values()).map(p => p.color);
-              let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
-              if (!newColor) {
-                newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        eventsData.forEach(event => {
+          if (event.attendees) {
+            event.attendees.forEach(attendee => {
+              if (attendee.email && !emailMap.has(attendee.email.toLowerCase())) {
+                discoveredNew = true;
+                const name = attendee.displayName || attendee.email;
+                const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                const usedColors = newPeopleList.map(p => p.color);
+                let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
+                if (!newColor) {
+                  newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                }
+                const newPerson = { name, initials, email: attendee.email, color: newColor, show: true };
+                newPeopleList.push(newPerson);
+                // Also add to map immediately to avoid duplicating within the same loop
+                emailMap.set(attendee.email.toLowerCase(), newPerson);
               }
-              peopleMap.set(attendee.email, { name, initials, email: attendee.email, color: newColor });
-            }
-          });
-        }
-      });
+            });
+          }
+        });
 
-      if (discoveredNew) {
-        const newPeopleDB = Array.from(peopleMap.values());
-        setPeopleDB(newPeopleDB);
-        persistSettings(calendarConfigs, newPeopleDB).catch(e => console.error(discoveringPeopleError, e));
+        if (discoveredNew) {
+          setPeopleDB(newPeopleList);
+          persistSettings(calendarConfigs, newPeopleList).catch(e => console.error('discoveringPeopleError', e));
+        }
       }
     } catch (error) {
       console.error('Failed to load events', error);

@@ -134,6 +134,9 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - **Attendees Tab**:
     - CRUD: Allows editing names, emails, and colors.
     - Initials Logic: Automatically generates 2-letter uppercase initials.
+    - **Merging**: Verifies that merging one person into another deletes the source and adds their email to `alternateEmails`.
+    - **Unmerging**: Verifies that clicking (x) on an alternate email removes it and creates a new standalone attendee.
+    - **Deduplication**: Verifies that if multiple emails for the same merged person are in one event, only one avatar is shown.
 - **Account Tab**:
     - Identity: Displays the currently logged-in user email.
     - Sign Out: Triggers the logout flow.

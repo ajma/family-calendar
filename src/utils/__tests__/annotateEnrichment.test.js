@@ -1,5 +1,4 @@
-import { describe, it, expect } from 'vitest';
-import { annotateEvents, filterHiddenAttendees } from '../annotateEnrichment';
+import { annotateEvents, filterHiddenAttendees, buildEmailMap, normalizeAttendees } from '../annotateEnrichment';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -14,6 +13,40 @@ const makeEvent = (overrides = {}) => ({
 
 const ALICE = { email: 'alice@example.com', name: 'Alice', initials: 'AL', color: '#ff6b6b', show: true };
 const BOB = { email: 'bob@example.com', name: 'Bob', initials: 'BO', color: '#4ecdc4', show: true };
+
+// ─── buildEmailMap & normalizeAttendees ───────────────────────────────────────
+
+describe('Attendee Normalization Utilities', () => {
+  const CHARLIE = { 
+    email: 'charlie@primary.com', 
+    name: 'Charlie', 
+    alternateEmails: ['charlie@work.com', 'charlie@home.com'] 
+  };
+
+  it('buildEmailMap maps both primary and alternate emails to the same person', () => {
+    const map = buildEmailMap([CHARLIE]);
+    expect(map.get('charlie@primary.com')).toEqual(CHARLIE);
+    expect(map.get('charlie@work.com')).toEqual(CHARLIE);
+    expect(map.get('charlie@home.com')).toEqual(CHARLIE);
+  });
+
+  it('normalizeAttendees dedups based on identity but PRESERVES original attendee data', () => {
+    const emailMap = buildEmailMap([CHARLIE]);
+    const attendees = [
+      { email: 'charlie@work.com', displayName: 'Charlie Work' },
+      { email: 'charlie@home.com', displayName: 'Charlie Home' }, // Should be dropped
+      { email: 'guest@other.com', displayName: 'Guest' }
+    ];
+    
+    const result = normalizeAttendees(attendees, emailMap);
+    
+    expect(result).toHaveLength(2);
+    // Verified: First occurrence preserved
+    expect(result[0].email).toBe('charlie@work.com'); 
+    expect(result[0].displayName).toBe('Charlie Work');
+    expect(result[1].email).toBe('guest@other.com');
+  });
+});
 
 // ─── annotateEvents ────────────────────────────────────────────────────────────
 
@@ -107,6 +140,13 @@ describe('annotateEvents', () => {
 // ─── filterHiddenAttendees ────────────────────────────────────────────────────
 
 describe('filterHiddenAttendees', () => {
+  it('removes attendees whose person record has show: false (including alternate emails)', () => {
+    const hiddenAlice = { ...ALICE, show: false, alternateEmails: ['alice@alternate.com'] };
+    const events = [makeEvent({ attendees: [{ email: 'alice@alternate.com' }] })];
+    const [result] = filterHiddenAttendees(events, [hiddenAlice]);
+    expect(result.attendees).toHaveLength(0);
+  });
+
   it('removes attendees whose person record has show: false', () => {
     const hiddenBob = { ...BOB, show: false };
     const events = [makeEvent({ attendees: [{ email: ALICE.email }, { email: BOB.email }] })];
@@ -125,6 +165,17 @@ describe('filterHiddenAttendees', () => {
     const events = [makeEvent({ attendees: [{ email: 'guest@external.com' }] })];
     const [result] = filterHiddenAttendees(events, [ALICE]);
     expect(result.attendees).toHaveLength(1);
+  });
+
+  it('deduplicates attendees when called (handles post-merge cleanup)', () => {
+    const CHARLIE = { email: 'charlie@primary.com', name: 'Charlie', alternateEmails: ['charlie@work.com'] };
+    const attendees = [{ email: 'charlie@primary.com' }, { email: 'charlie@work.com' }];
+    const events = [makeEvent({ attendees })];
+    
+    const [result] = filterHiddenAttendees(events, [CHARLIE]);
+    
+    expect(result.attendees).toHaveLength(1);
+    expect(result.attendees[0].email).toBe('charlie@primary.com');
   });
 
   it('returns events without attendees unchanged', () => {

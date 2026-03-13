@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 export const findPersonByEmail = (people, email) => {
   if (!email) return null;
+  const lowerEmail = email.toLowerCase();
   return people.find(p => 
-    p.email === email || 
-    (p.alternateEmails && p.alternateEmails.includes(email))
+    (p.email && p.email.toLowerCase() === lowerEmail) || 
+    (p.alternateEmails && p.alternateEmails.some(ae => ae.toLowerCase() === lowerEmail))
   );
 };
 

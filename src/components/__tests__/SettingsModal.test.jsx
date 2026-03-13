@@ -197,4 +197,59 @@ describe('SettingsModal', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
+
+  it('handles the merge flow correctly', () => {
+    const people = [
+      { _id: '1', email: 'alice@example.com', name: 'Alice', initials: 'A', color: '#ff0000', show: true },
+      { _id: '2', email: 'bob@example.com', name: 'Bob', initials: 'B', color: '#00ff00', show: true }
+    ];
+    render(<SettingsModal {...defaultProps} people={people} />);
+    
+    fireEvent.click(screen.getByText('👥 Attendees'));
+    
+    // Click Merge on Alice
+    const mergeButtons = screen.getAllByText('Merge...');
+    fireEvent.click(mergeButtons[0]);
+    
+    // Select Bob as target
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'bob@example.com' } });
+    
+    // Confirm
+    fireEvent.click(screen.getByText('Confirm'));
+    
+    // Alice should be gone, Bob should have Alice's email in alternates
+    expect(screen.queryByDisplayValue('Alice')).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('Bob')).toBeInTheDocument();
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument(); // Tag
+  });
+
+  it('handles the unmerge flow correctly', () => {
+    const people = [
+      { 
+        _id: '1', 
+        email: 'alice@primary.com', 
+        name: 'Alice', 
+        initials: 'A', 
+        color: '#ff0000', 
+        show: true, 
+        alternateEmails: ['alice@work.com'] 
+      }
+    ];
+    render(<SettingsModal {...defaultProps} people={people} />);
+    
+    fireEvent.click(screen.getByText('👥 Attendees'));
+    
+    // Should see alternate email tag
+    expect(screen.getByText('alice@work.com')).toBeInTheDocument();
+    
+    // Click unmerge (x button in tag)
+    const unmergeBtn = screen.getByTitle('Unmerge email');
+    fireEvent.click(unmergeBtn);
+    
+    // alice@work.com should now be its own record
+    expect(screen.getByDisplayValue('alice@work.com')).toBeInTheDocument();
+    // And no longer a tag under Alice
+    expect(screen.queryByTitle('Unmerge email')).not.toBeInTheDocument();
+  });
 });
