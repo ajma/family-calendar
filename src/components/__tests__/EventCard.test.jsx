@@ -34,6 +34,15 @@ describe('EventCard', () => {
     expect(screen.getByText('Untitled Event')).toBeInTheDocument();
   });
 
+  it('calculates a smaller font size for very long titles', () => {
+    const longTitle = 'This is a very very very very very very long title that should trigger font shrinking';
+    render(<EventCard event={makeEvent({ summary: longTitle })} />);
+    const titleElement = screen.getByText(longTitle);
+    const fontSize = titleElement.style.fontSize;
+    expect(fontSize).not.toBe('0.9rem');
+    expect(parseFloat(fontSize)).toBeLessThan(0.9);
+  });
+
   // ── Time display ──────────────────────────────────────────────────────────
 
   it('shows "All Day" when the event has no start.dateTime', () => {

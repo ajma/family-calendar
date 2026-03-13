@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 72 tests across 9 files.**
+**Total: 73 tests across 9 files.**
 
 To run:
 
@@ -166,6 +166,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 - Renders the event summary.
 - Shows "Untitled Event" when summary is missing.
+- **Calculates a smaller font size** for very long titles to ensure visibility without truncation.
 - Shows "All Day" when the event has no `start.dateTime`.
 - Does not render the attendee row when there are no attendees.
 - Renders one avatar per attendee (up to 6).

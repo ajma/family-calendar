@@ -38,11 +38,18 @@ const EventCard = ({ event }) => {
     }
   }
 
+  const summary = event.summary || 'Untitled Event';
+  // Calculate dynamic font size based on text length
+  // Default is 0.9rem. Start shrinking after 30 characters.
+  const dynamicFontSize = summary.length > 30 
+    ? Math.max(0.65, 0.9 - (summary.length - 30) * 0.005) + 'rem'
+    : '0.9rem';
+
   return (
     <div className="event-card glass">
       <div className="event-card-border" style={borderIndicatorStyle}></div>
       <div className="event-time">{timeString}</div>
-      <h3 className="event-title">{event.summary || 'Untitled Event'}</h3>
+      <h3 className="event-title" style={{ fontSize: dynamicFontSize }}>{summary}</h3>
 
       {attendees.length > 0 && (
         <div className="event-attendees">
