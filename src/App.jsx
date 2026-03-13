@@ -42,6 +42,8 @@ function App() {
   const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(0);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -115,6 +117,24 @@ function App() {
     window.addEventListener('api-unauthorized', handleUnauthorized);
     return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
   }, []);
+
+  // Keyboard navigation for Presentation Mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!presentationMode) return;
+
+      if (e.key === 'ArrowRight') {
+        setRevealedCount(prev => prev + 1);
+      } else if (e.key === 'ArrowLeft') {
+        setRevealedCount(prev => Math.max(0, prev - 1));
+      } else if (e.key === 'Escape') {
+        setPresentationMode(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [presentationMode]);
 
   // Centralised dual write-through: always keeps localStorage and the
   // backend in sync in one place instead of scattered across handlers.
@@ -272,6 +292,13 @@ function App() {
     localStorage.setItem('selected_date', today.toISOString());
   };
 
+  const togglePresentationMode = () => {
+    if (!presentationMode) {
+      setRevealedCount(0);
+    }
+    setPresentationMode(!presentationMode);
+  };
+
   const handleSaveAttendees = async (updatedPeople) => {
     setPeopleDB(updatedPeople);
     try {
@@ -296,7 +323,7 @@ function App() {
       <header className="app-header">
         <h1>Family <span className="highlight-text">Calendar</span></h1>
 
-        {sessionToken && (
+        {sessionToken && !presentationMode && (
           <CalendarHeader
             currentDate={currentDate}
             onPrev={handlePrevWeek}
@@ -307,17 +334,28 @@ function App() {
         )}
 
         <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
-          {sessionToken && calendars.length > 0 && (
-            <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
+          {sessionToken && !presentationMode && (
+            <>
+              {calendars.length > 0 && (
+                <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
+              )}
+              <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
+            </>
           )}
 
           {sessionToken && (
-            <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
+            <button 
+              className={`control-btn glass ${presentationMode ? 'active-mode' : ''}`} 
+              style={{ marginRight: '1rem' }} 
+              onClick={togglePresentationMode}
+            >
+              {presentationMode ? '⏹ End' : '▶ Present'}
+            </button>
           )}
 
-          {sessionToken ? (
+          {sessionToken && !presentationMode ? (
             <button className="control-btn glass" onClick={logout}>Sign Out</button>
-          ) : (
+          ) : !sessionToken && (
             <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
           )}
         </div>
@@ -337,10 +375,43 @@ function App() {
         ) : loading ? (
           <div className="loading-state glass" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading your schedule...</div>
         ) : (() => {
-          const filteredEvents = filterHiddenAttendees(events, peopleDB);
+          let filteredEvents = filterHiddenAttendees(events, peopleDB);
+          
+          if (presentationMode) {
+            // Sort chronologically for the reveal flow
+            filteredEvents = [...filteredEvents].sort((a, b) => {
+              const dateA = new Date(a.start.dateTime || a.start.date);
+              const dateB = new Date(b.start.dateTime || b.start.date);
+              return dateA - dateB;
+            });
+            // Only show revealedCount number of events
+            filteredEvents = filteredEvents.slice(0, revealedCount);
+          }
+
           return <WeekGrid currentDate={currentDate} events={filteredEvents} />;
         })()}
       </main>
+
+      {presentationMode && (
+        <div className="presentation-controls">
+          <div className="presentation-nav-group">
+            <button 
+              className="presentation-btn prev" 
+              onClick={() => setRevealedCount(prev => Math.max(0, prev - 1))}
+              title="Previous (Left Arrow)"
+            >
+              &lt;
+            </button>
+            <button 
+              className="presentation-btn next" 
+              onClick={() => setRevealedCount(prev => prev + 1)}
+              title="Next (Right Arrow)"
+            >
+              &gt;
+            </button>
+          </div>
+        </div>
+      )}
 
       <AttendeeEditor
         isOpen={isEditorOpen}

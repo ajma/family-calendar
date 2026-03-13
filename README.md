@@ -1,9 +1,10 @@
 # Family Calendar
 
-Family Calendar is a helpful web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view.
+Family Calendar is a premium web application that allows you to seamlessly unify multiple Google Calendars into one beautiful weekly view, featuring a powerful **Presentation Mode** for family discussion.
 
 ## Features
 
+- **Presentation Mode:** A dedicated mode that let's your family talk about your week and present items one at a time. Also with full keyboard/shortcut support.
 - **OAuth 2.0 Google Integration:** Securely sign in with your Google account. The app requests readonly access to your calendar list and events.
 - **Multi-Calendar Support:** Select any number of calendars (Personal, Work, Family, etc.) you want to view simultaneously. Events from all selected calendars are merged into a single timeline.
 - **Cross-Calendar Deduplication:** If the same event was shared across multiple calendars, CalendarSync will intelligently merge them together and present it as one event, preventing duplicated clutter.
@@ -85,6 +86,7 @@ Run `docker compose up -d` to start the application. Note that the image must be
 4. If you have custom attendee profiles, you can use the dropdown next to a calendar name to **auto-assign** that person to all events from that calendar.
 5. Hit Apply, and enjoy your synced weekly calendar view!
 6. Use the **Edit Attendees** to rename or recolor attendees dynamically.
+7. Click the **▶ Present** button to enter Presentation Mode. Step through events one by one using the on-screen controls or your **Arrow Keys** (←/→). Hit **Escape** or click **⏹ End** to return to the normal view.
 
 ## Testing
 

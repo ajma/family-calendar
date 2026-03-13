@@ -2,13 +2,22 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 77 tests across 9 files.**
+**Total: 78 tests across 10 files.**
 
 To run:
 
 ```bash
 npm run test
 ```
+
+---
+
+### `src/__tests__/PresentationMode.test.jsx`
+
+- **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
+- **Header Simplification**: Confirms that other buttons are hidden during presentation.
+- **Keyboard Navigation**: Verifies that Arrow keys and Escape key function correctly.
+- **Exit Logic**: Ensures all UI elements reappear after exiting.
 
 ---
 
