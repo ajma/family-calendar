@@ -407,6 +407,37 @@
   background: var(--surface-hover);
 }
 
+/* Emoji Picker Compact Overrides */
+.compact-emoji-picker {
+  --epr-category-label-font-size: 0.75rem !important;
+  --epr-search-input-font-size: 0.85rem !important;
+  --epr-emoji-size: 26px !important;
+  --epr-header-padding: 10px 12px !important;
+}
+
+.compact-emoji-picker .epr-search-container input {
+  font-size: 0.85rem !important;
+}
+
+.compact-emoji-picker .epr-emoji-category-label {
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  padding: 0 10px !important;
+  background-color: var(--bg-color) !important;
+}
+
+.compact-emoji-picker .epr-category-navigation {
+  padding: 2px 0 !important;
+  height: auto !important;
+}
+
+.compact-emoji-picker .epr-cat-btn {
+  padding: 2px !important;
+  height: 28px !important;
+}
+
 .attendee-list-item.editing {
   background: var(--surface-hover);
   border-color: var(--border-color);

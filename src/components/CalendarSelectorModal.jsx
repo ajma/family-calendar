@@ -190,6 +190,7 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                           {activePickerId === cal.id && (
                             <div 
                               ref={pickerRef}
+                              className="compact-emoji-picker"
                               style={{ 
                                 position: 'absolute', 
                                 top: '100%', 
@@ -199,8 +200,12 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                                 boxShadow: 'var(--shadow-md)',
                                 background: 'white',
                                 borderRadius: '8px',
-                                padding: '0.5rem',
-                                border: '1px solid var(--border-color)'
+                                padding: '0.45rem',
+                                border: '1px solid var(--border-color)',
+                                /* Scale down internal typography moderately */
+                                '--epr-category-label-font-size': '0.75rem',
+                                '--epr-search-input-font-size': '0.85rem',
+                                '--epr-emoji-size': '26px'
                               }}
                             >
                               <button
@@ -210,13 +215,13 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                                 }}
                                 style={{
                                   width: '100%',
-                                  padding: '0.5rem',
-                                  marginBottom: '0.5rem',
+                                  padding: '0.3rem',
+                                  marginBottom: '0.4rem',
                                   background: 'var(--bg-color)',
                                   border: '1px solid var(--border-color)',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '0.85rem',
+                                  fontSize: '0.75rem',
                                   color: 'var(--text-secondary)',
                                   textAlign: 'center'
                                 }}
@@ -229,8 +234,9 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                                 onEmojiClick={(emojiData) => handleEmojiClick(cal.id, emojiData)}
                                 autoFocusSearch={false}
                                 theme="auto"
-                                width={300}
-                                height={400}
+                                width={280}
+                                height={350}
+                                previewConfig={{ showPreview: false }}
                               />
                             </div>
                           )}
