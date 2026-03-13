@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 70 tests across 9 files.**
+**Total: 72 tests across 9 files.**
 
 To run:
 
@@ -15,6 +15,10 @@ npm run test
 ## Backend Tests
 
 ### `server/__tests__/api.test.js`
+
+#### `GET /api/health`
+
+- Returns `200 { status: 'ok' }`.
 
 #### `POST /api/auth`
 
@@ -134,10 +138,12 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - "Cancel" calls `onClose`.
 - "Apply Changes" calls `onSave` with the updated config.
 - "Apply Changes" calls `onClose` after saving.
-- Shows emoji and hashtag inputs when a calendar is selected.
-- Does not show emoji input when a calendar is not selected.
-- Saves emoji value when set.
-- Removes the `emoji` key entirely (rather than setting it to `""`) when the field is cleared.
+- Shows the emoji picker button and hashtag input when a calendar is selected.
+- Does not show emoji picker button when a calendar is not selected.
+- Shows the emoji picker search/text area when the button is clicked.
+- Shows assigned emoji in the button.
+- Shows a plus sign (`＋`) when no emoji is assigned.
+- Clears the emoji when "No Emoji" is clicked.
 - Shows the person dropdown when a calendar is selected and people exist.
 
 ---

@@ -1,7 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import EmojiPicker from 'emoji-picker-react';
 
 const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {}, people = [], onSave }) => {
   const [localConfigs, setLocalConfigs] = useState({});
+  const [activePickerId, setActivePickerId] = useState(null); // ID of the calendar currently picking an emoji
+  const pickerRef = useRef(null);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        setActivePickerId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +75,11 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
     });
   };
 
+  const handleEmojiClick = (calendarId, emojiObject) => {
+    handleConfigChange(calendarId, 'emoji', emojiObject.emoji);
+    setActivePickerId(null);
+  };
+
   const handleSave = () => {
     onSave(localConfigs);
     onClose();
@@ -85,7 +104,7 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
               const nameB = b.summaryOverride || b.summary || '';
               return nameA.localeCompare(nameB);
             }).map(cal => (
-              <label
+              <div
                 key={cal.id}
                 className="attendee-list-item"
                 style={{
@@ -94,7 +113,6 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                   padding: '1rem',
                   marginBottom: '0.5rem',
                   border: '1px solid var(--border-color)',
-                  cursor: 'pointer',
                   borderRadius: '8px',
                   transition: 'background-color 0.2s ease'
                 }}
@@ -145,23 +163,78 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                     </div>
                     {localConfigs[cal.id]?.selected && (
                       <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem', gap: '0.5rem' }}>
-                        <input
-                          type="text"
-                          placeholder="Prefix Emoji"
-                          value={localConfigs[cal.id]?.emoji || ''}
-                          onChange={(e) => handleConfigChange(cal.id, 'emoji', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          maxLength="5"
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--surface-color)',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.85rem',
-                            width: '90px'
-                          }}
-                        />
+                        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setActivePickerId(activePickerId === cal.id ? null : cal.id)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)',
+                              background: 'var(--surface-color)',
+                              color: localConfigs[cal.id]?.emoji ? 'var(--text-primary)' : 'var(--text-secondary)',
+                              fontSize: '1rem',
+                              width: '40px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            title="Pick an emoji"
+                          >
+                            {localConfigs[cal.id]?.emoji || '＋'}
+                          </button>
+                          
+                          {activePickerId === cal.id && (
+                            <div 
+                              ref={pickerRef}
+                              style={{ 
+                                position: 'absolute', 
+                                top: '100%', 
+                                left: 0, 
+                                zIndex: 1000,
+                                marginTop: '0.5rem',
+                                boxShadow: 'var(--shadow-md)',
+                                background: 'white',
+                                borderRadius: '8px',
+                                padding: '0.5rem',
+                                border: '1px solid var(--border-color)'
+                              }}
+                            >
+                              <button
+                                onClick={() => {
+                                  handleConfigChange(cal.id, 'emoji', '');
+                                  setActivePickerId(null);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.5rem',
+                                  marginBottom: '0.5rem',
+                                  background: 'var(--bg-color)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  color: 'var(--text-secondary)',
+                                  textAlign: 'center'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-color)'}
+                              >
+                                ❌ No Emoji
+                              </button>
+                              <EmojiPicker 
+                                onEmojiClick={(emojiData) => handleEmojiClick(cal.id, emojiData)}
+                                autoFocusSearch={false}
+                                theme="auto"
+                                width={300}
+                                height={400}
+                              />
+                            </div>
+                          )}
+                        </div>
                         <input
                           type="text"
                           placeholder="#hashtag filter (optional)"
@@ -183,7 +256,7 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
                     )}
                   </div>
                 </div>
-              </label>
+              </div>
             ))
           )}
         </div>

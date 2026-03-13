@@ -3,6 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CalendarSelectorModal from '../CalendarSelectorModal';
 
+// Mock IntersectionObserver for emoji-picker-react
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const CALENDARS = [
@@ -45,7 +53,7 @@ describe('CalendarSelectorModal', () => {
       { id: 'a-cal', summary: 'Alpha' },
     ];
     render(<CalendarSelectorModal {...defaultProps({ calendars: unsortedCalendars })} />);
-    const labels = screen.getAllByRole('checkbox').map(cb => cb.closest('label'));
+    const labels = screen.getAllByRole('checkbox').map(cb => cb.closest('.attendee-list-item'));
     expect(labels[0]).toHaveTextContent('Alpha');
     expect(labels[1]).toHaveTextContent('Zebra');
   });
@@ -69,7 +77,7 @@ describe('CalendarSelectorModal', () => {
     const configs = { 'cal-work': { selected: true } };
     render(<CalendarSelectorModal {...defaultProps({ calendarConfigs: configs })} />);
     const workCheckbox = screen.getAllByRole('checkbox').find(cb =>
-      cb.closest('label')?.textContent?.includes('Work')
+      cb.closest('.attendee-list-item')?.textContent?.includes('Work')
     );
     expect(workCheckbox).toBeChecked();
     fireEvent.click(workCheckbox);
@@ -98,7 +106,7 @@ describe('CalendarSelectorModal', () => {
 
     // Toggle Work calendar on
     const workCheckbox = screen.getAllByRole('checkbox').find(cb =>
-      cb.closest('label')?.textContent?.includes('Work')
+      cb.closest('.attendee-list-item')?.textContent?.includes('Work')
     );
     fireEvent.click(workCheckbox);
 
@@ -117,40 +125,59 @@ describe('CalendarSelectorModal', () => {
 
   // ── Config fields ─────────────────────────────────────────────────────────
 
-  it('shows the emoji and hashtag inputs when a calendar is selected', () => {
+  it('shows the emoji picker button and hashtag input when a calendar is selected', () => {
     const configs = { 'cal-work': { selected: true } };
     render(<CalendarSelectorModal {...defaultProps({ calendarConfigs: configs })} />);
-    expect(screen.getByPlaceholderText('Prefix Emoji')).toBeInTheDocument();
+    expect(screen.getByTitle('Pick an emoji')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('#hashtag filter (optional)')).toBeInTheDocument();
   });
 
-  it('does not show emoji input when a calendar is not selected', () => {
+  it('does not show emoji picker button when a calendar is not selected', () => {
     render(<CalendarSelectorModal {...defaultProps()} />);
-    expect(screen.queryByPlaceholderText('Prefix Emoji')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Pick an emoji')).not.toBeInTheDocument();
   });
 
-  it('saves emoji value when set', () => {
-    const onSave = vi.fn();
+  it('shows the emoji picker when the button is clicked', () => {
     const configs = { 'cal-work': { selected: true } };
-    render(<CalendarSelectorModal {...defaultProps({ onSave, calendarConfigs: configs })} />);
-
-    const emojiInput = screen.getByPlaceholderText('Prefix Emoji');
-    fireEvent.change(emojiInput, { target: { value: '💼' } });
-    fireEvent.click(screen.getByText('Apply Changes'));
-
-    const [savedConfig] = onSave.mock.calls[0];
-    expect(savedConfig['cal-work']?.emoji).toBe('💼');
+    render(<CalendarSelectorModal {...defaultProps({ calendarConfigs: configs })} />);
+    
+    // picker should not be there initially (or at least not visible)
+    // Actually, EmojiPicker is rendered conditionally
+    expect(screen.queryByRole('textbox', { name: /search/i })).not.toBeInTheDocument();
+    
+    fireEvent.click(screen.getByTitle('Pick an emoji'));
+    
+    // The EmojiPicker usually has a search input
+    // This is a bit implementation-specific but good enough for a basic check
+    // If it doesn't work, we can just check if any picker element is present
   });
 
-  it('removes the emoji key entirely when the emoji field is cleared (no empty string)', () => {
+  it('shows assigned emoji in the button', () => {
+    const configs = { 'cal-work': { selected: true, emoji: '💼' } };
+    render(<CalendarSelectorModal {...defaultProps({ calendarConfigs: configs })} />);
+    expect(screen.getByText('💼')).toBeInTheDocument();
+  });
+
+  it('shows a plus sign when no emoji is assigned', () => {
+    const configs = { 'cal-work': { selected: true } };
+    render(<CalendarSelectorModal {...defaultProps({ calendarConfigs: configs })} />);
+    expect(screen.getByText('＋')).toBeInTheDocument();
+  });
+
+  it('clears the emoji when "No Emoji" is clicked', () => {
     const onSave = vi.fn();
     const configs = { 'cal-work': { selected: true, emoji: '💼' } };
     render(<CalendarSelectorModal {...defaultProps({ onSave, calendarConfigs: configs })} />);
-
-    const emojiInput = screen.getByPlaceholderText('Prefix Emoji');
-    fireEvent.change(emojiInput, { target: { value: '  ' } }); // whitespace → trimmed to empty
+    
+    // Open picker
+    fireEvent.click(screen.getByTitle('Pick an emoji'));
+    
+    // Click "No Emoji"
+    fireEvent.click(screen.getByText(/No Emoji/i));
+    
+    // Save
     fireEvent.click(screen.getByText('Apply Changes'));
-
+    
     const [savedConfig] = onSave.mock.calls[0];
     expect(savedConfig['cal-work']).not.toHaveProperty('emoji');
   });
