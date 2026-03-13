@@ -63,9 +63,9 @@ const AttendeeEditor = ({ isOpen, onClose, people, onSave }) => {
           <h2 style={{ padding: 0, border: 'none', margin: 0 }}>Edit Attendees</h2>
           <button onClick={handleAddPerson} className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>+ Add Person</button>
         </div>
-        <div className="attendee-list">
+        <div className="attendee-list" style={{ padding: '1rem' }}>
           {localPeople.map(person => (
-            <div key={person._id} className="attendee-list-item editing" style={{ padding: '1rem', marginBottom: '1rem', border: '1px solid var(--border-color)' }}>
+            <div key={person._id} className="attendee-list-item editing" style={{ padding: '0.75rem 1rem', marginBottom: '0.5rem', border: '1px solid var(--border-color)' }}>
 
               <div className="attendee-edit-form" style={{
                 marginTop: 0,

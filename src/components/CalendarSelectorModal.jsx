@@ -89,13 +89,15 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content glass" style={{ maxWidth: '500px' }}>
-        <h2>Select Calendars to Sync</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Choose which calendars you want to display events from in your weekly view.
-        </p>
+      <div className="modal-content glass" style={{ maxWidth: '550px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+          <h2 style={{ padding: 0, border: 'none', margin: '0 0 0.5rem 0' }}>Select Calendars</h2>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.85rem' }}>
+            Choose which calendars to display and configure their hashtag filters or auto-attendee assignments.
+          </p>
+        </div>
 
-        <div className="attendee-list" style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
+        <div className="attendee-list" style={{ overflowY: 'auto', padding: '1rem' }}>
           {calendars.length === 0 ? (
             <div className="empty-state">No calendars found.</div>
           ) : (
@@ -103,173 +105,206 @@ const CalendarSelectorModal = ({ isOpen, onClose, calendars, calendarConfigs = {
               const nameA = a.summaryOverride || a.summary || '';
               const nameB = b.summaryOverride || b.summary || '';
               return nameA.localeCompare(nameB);
-            }).map(cal => (
-              <div
-                key={cal.id}
-                className="attendee-list-item"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '1rem',
-                  marginBottom: '0.5rem',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', flexDirection: 'row', justifyContent: 'flex-start' }}>
-                  <input
-                    type="checkbox"
-                    checked={localConfigs[cal.id]?.selected || false}
-                    onChange={() => handleToggle(cal.id)}
-                    style={{
-                      marginRight: '1rem',
-                      width: '18px',
-                      height: '18px',
-                      cursor: 'pointer',
-                      accentColor: 'var(--accent-blue)'
-                    }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+            }).map(cal => {
+              const isSelected = localConfigs[cal.id]?.selected || false;
+              return (
+                <div
+                  key={cal.id}
+                  className={`attendee-list-item ${isSelected ? 'editing' : ''}`}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '0.5rem',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {/* Top Row: Selection & Name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggle(cal.id)}
+                        id={`cal-${cal.id}`}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          cursor: 'pointer',
+                          accentColor: 'var(--accent-blue)'
+                        }}
+                      />
+                      <label 
+                        htmlFor={`cal-${cal.id}`}
+                        style={{ 
+                          fontWeight: '600', 
+                          fontSize: '0.9rem',
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
                         {cal.summaryOverride || cal.summary}
-                      </div>
-                      {localConfigs[cal.id]?.selected && people.length > 0 && (
-                        <select
-                          value={localConfigs[cal.id]?.assignment || ''}
-                          onChange={(e) => handleConfigChange(cal.id, 'assignment', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--surface-color)',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.85rem',
-                            maxWidth: '150px'
-                          }}
-                        >
-                          <option value="">-- No Auto Attendee --</option>
-                          {people.map(p => (
-                            <option key={p.email} value={p.email}>
-                              {p.name || p.email}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      </label>
                     </div>
-                    {localConfigs[cal.id]?.selected && (
-                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem', gap: '0.5rem' }}>
-                        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => setActivePickerId(activePickerId === cal.id ? null : cal.id)}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '4px',
-                              border: '1px solid var(--border-color)',
-                              background: 'var(--surface-color)',
-                              color: localConfigs[cal.id]?.emoji ? 'var(--text-primary)' : 'var(--text-secondary)',
-                              fontSize: '1rem',
-                              width: '40px',
-                              height: '32px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                            title="Pick an emoji"
-                          >
-                            {localConfigs[cal.id]?.emoji || '＋'}
-                          </button>
-                          
-                          {activePickerId === cal.id && (
-                            <div 
-                              ref={pickerRef}
-                              className="compact-emoji-picker"
-                              style={{ 
-                                position: 'absolute', 
-                                top: '100%', 
-                                left: 0, 
-                                zIndex: 1000,
-                                marginTop: '0.5rem',
-                                boxShadow: 'var(--shadow-md)',
-                                background: 'white',
-                                borderRadius: '8px',
-                                padding: '0.45rem',
+
+                    {/* Expandable Config Row */}
+                    {isSelected && (
+                      <div className="attendee-edit-form" style={{
+                        marginTop: '0.5rem',
+                        paddingTop: '0.75rem',
+                        borderTop: '1px dashed var(--border-color)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        animation: 'none'
+                      }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          {/* Auto-Attendee Group */}
+                          <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>
+                              Auto Assign To
+                            </label>
+                            <select
+                              value={localConfigs[cal.id]?.assignment || ''}
+                              onChange={(e) => handleConfigChange(cal.id, 'assignment', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '0.4rem 0.5rem',
+                                borderRadius: '6px',
                                 border: '1px solid var(--border-color)',
-                                /* Scale down internal typography moderately */
-                                '--epr-category-label-font-size': '0.75rem',
-                                '--epr-search-input-font-size': '0.85rem',
-                                '--epr-emoji-size': '26px'
+                                background: 'var(--bg-color)',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.85rem',
+                                height: '34px',
+                                outline: 'none'
                               }}
                             >
+                              <option value="">-- No Auto Attendee --</option>
+                              {people.map(p => (
+                                <option key={p.email} value={p.email}>
+                                  {p.name || p.email}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Hashtag Filter Group */}
+                          <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>
+                              Hashtag Filter
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="#hashtag filter (optional)"
+                              value={localConfigs[cal.id]?.hashtag || ''}
+                              onChange={(e) => handleConfigChange(cal.id, 'hashtag', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-color)',
+                                background: 'var(--bg-color)',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.85rem',
+                                height: '34px',
+                                outline: 'none'
+                              }}
+                            />
+                          </div>
+
+                          {/* Emoji Picker Group */}
+                          <div className="form-group" style={{ flex: '0 0 auto' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>
+                              Emoji
+                            </label>
+                            <div style={{ position: 'relative' }}>
                               <button
-                                onClick={() => {
-                                  handleConfigChange(cal.id, 'emoji', '');
-                                  setActivePickerId(null);
-                                }}
+                                type="button"
+                                onClick={() => setActivePickerId(activePickerId === cal.id ? null : cal.id)}
+                                title="Pick an emoji"
                                 style={{
-                                  width: '100%',
-                                  padding: '0.3rem',
-                                  marginBottom: '0.4rem',
-                                  background: 'var(--bg-color)',
-                                  border: '1px solid var(--border-color)',
+                                  padding: '0.4rem',
                                   borderRadius: '6px',
+                                  border: '1px solid var(--border-color)',
+                                  background: 'var(--bg-color)',
+                                  width: '40px',
+                                  height: '34px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   cursor: 'pointer',
-                                  fontSize: '0.75rem',
-                                  color: 'var(--text-secondary)',
-                                  textAlign: 'center'
+                                  fontSize: '1.1rem'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-color)'}
                               >
-                                ❌ No Emoji
+                                {localConfigs[cal.id]?.emoji || '＋'}
                               </button>
-                              <EmojiPicker 
-                                onEmojiClick={(emojiData) => handleEmojiClick(cal.id, emojiData)}
-                                autoFocusSearch={false}
-                                theme="auto"
-                                width={280}
-                                height={350}
-                                previewConfig={{ showPreview: false }}
-                              />
+                              
+                              {activePickerId === cal.id && (
+                                <div 
+                                  ref={pickerRef}
+                                  className="compact-emoji-picker"
+                                  style={{ 
+                                    position: 'absolute', 
+                                    top: '100%', 
+                                    left: 0, 
+                                    zIndex: 1000,
+                                    marginTop: '0.5rem',
+                                    boxShadow: 'var(--shadow-md)',
+                                    background: 'white',
+                                    borderRadius: '8px',
+                                    padding: '0.45rem',
+                                    border: '1px solid var(--border-color)',
+                                    '--epr-category-label-font-size': '0.75rem',
+                                    '--epr-search-input-font-size': '0.85rem',
+                                    '--epr-emoji-size': '26px'
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      handleConfigChange(cal.id, 'emoji', '');
+                                      setActivePickerId(null);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.3rem',
+                                      marginBottom: '0.4rem',
+                                      background: 'var(--bg-color)',
+                                      border: '1px solid var(--border-color)',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem',
+                                      color: 'var(--text-secondary)',
+                                      textAlign: 'center'
+                                    }}
+                                  >
+                                    ❌ No Emoji
+                                  </button>
+                                  <EmojiPicker 
+                                    onEmojiClick={(emojiData) => handleEmojiClick(cal.id, emojiData)}
+                                    autoFocusSearch={false}
+                                    theme="auto"
+                                    width={280}
+                                    height={350}
+                                    previewConfig={{ showPreview: false }}
+                                  />
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
-                        <input
-                          type="text"
-                          placeholder="#hashtag filter (optional)"
-                          value={localConfigs[cal.id]?.hashtag || ''}
-                          onChange={(e) => handleConfigChange(cal.id, 'hashtag', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--surface-color)',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.85rem',
-                            flex: 1,
-                            maxWidth: '200px'
-                          }}
-                        />
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button onClick={onClose} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-          <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Apply Changes</button>
+        <div className="modal-actions">
+          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={handleSave} className="btn-primary">Apply Changes</button>
         </div>
       </div>
     </div>
