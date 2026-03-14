@@ -25,13 +25,9 @@ const DayColumn = ({ date, events = [], isToday }) => {
         <span className={`day-number ${isToday ? 'active-day' : ''}`}>{dayNumber}</span>
       </div>
       <div className="day-events custom-scrollbar">
-        {sortedEvents.length === 0 ? (
-          <div className="empty-state">No events</div>
-        ) : (
-          sortedEvents.map(event => (
-            <EventCard key={event.id} event={event} />
-          ))
-        )}
+        {sortedEvents.map(event => (
+          <EventCard key={event.id} event={event} />
+        ))}
       </div>
     </div>
   );
