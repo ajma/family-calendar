@@ -33,10 +33,19 @@ export function normalizeAttendees(attendees, emailMap) {
   for (const att of attendees) {
     const person = att.email ? emailMap.get(att.email.toLowerCase()) : null;
     const resolvedEmail = person ? person.email : att.email;
+    
     if (resolvedEmail && seen.has(resolvedEmail.toLowerCase())) continue; // dedup
     if (resolvedEmail) seen.add(resolvedEmail.toLowerCase());
-    // Preserve the original attendee object (don't overwrite email/name)
-    result.push(att);
+    
+    if (person) {
+      result.push({
+        ...att,
+        email: person.email,
+        displayName: person.name || person.email
+      });
+    } else {
+      result.push(att);
+    }
   }
   return result;
 }

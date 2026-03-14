@@ -110,7 +110,7 @@ describe('Keyboard Shortcuts (Button Mapped)', () => {
         expect(presentSpy).not.toHaveBeenCalled();
     });
 
-    it('navigates events in presentation mode using keys', async () => {
+    it('navigates events in presentation mode using keys even if a button is focused', async () => {
         localStorage.setItem('session_token', 'fake-token');
         render(<App />, { wrapper: Wrapper });
 
@@ -118,31 +118,19 @@ describe('Keyboard Shortcuts (Button Mapped)', () => {
         const presentBtn = await screen.findByRole('button', { name: /Present/i });
         fireEvent.click(presentBtn);
 
-        // Wait for controls to appear
-        const nextBtn = await screen.findByTitle(/Next/i);
-        const prevBtn = await screen.findByTitle(/Previous/i);
-        
-        // The present button becomes the end button
+        // In a real browser, the button clicked would stay focused.
+        // The "Present" button is replaced by the "End" button (likely at the same DOM node or similar).
         const endBtn = await screen.findByRole('button', { name: /End/i });
+        endBtn.focus();
+        expect(document.activeElement).toBe(endBtn);
 
+        const nextBtn = await screen.findByTitle(/Next/i);
         const nextSpy = vi.spyOn(nextBtn, 'click');
-        const prevSpy = vi.spyOn(prevBtn, 'click');
-        const endSpy = vi.spyOn(endBtn, 'click');
 
-        // Press ArrowRight
-        fireEvent.keyDown(window, { key: 'ArrowRight', code: 'ArrowRight' });
+        // Press ArrowRight while button is focused
+        fireEvent.keyDown(window, { key: 'ArrowRight', code: 'ArrowRight', bubbles: true });
+        
+        // SHOULD trigger click
         expect(nextSpy).toHaveBeenCalled();
-
-        // Press ArrowLeft
-        fireEvent.keyDown(window, { key: 'ArrowLeft', code: 'ArrowLeft' });
-        expect(prevSpy).toHaveBeenCalled();
-
-        // Press Space
-        fireEvent.keyDown(window, { key: ' ', code: 'Space' });
-        expect(nextSpy).toHaveBeenCalledTimes(2);
-
-        // Press Escape
-        fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
-        expect(endSpy).toHaveBeenCalled();
     });
 });

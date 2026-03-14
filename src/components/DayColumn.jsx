@@ -9,8 +9,8 @@ const DayColumn = ({ date, events = [], isToday }) => {
     const aIsAllDay = !!a.start.date;
     const bIsAllDay = !!b.start.date;
     
-    if (aIsAllDay && !bIsAllDay) return -1;
-    if (!aIsAllDay && bIsAllDay) return 1;
+    if (aIsAllDay && !bIsAllDay) return 1;
+    if (!aIsAllDay && bIsAllDay) return -1;
     
     // If both are same type, sort by start time
     const aTime = a.start.dateTime || a.start.date;

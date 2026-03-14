@@ -110,7 +110,7 @@ describe('Presentation Mode', () => {
         expect(await screen.findByText(/Settings/i)).toBeInTheDocument();
     });
 
-    it('reveals all-day events before timed events on the same day', async () => {
+    it('reveals timed events before all-day events on the same day', async () => {
         const { fetchEvents } = await import('../services/backend');
         vi.mocked(fetchEvents).mockResolvedValue([
             { 
@@ -140,18 +140,18 @@ describe('Presentation Mode', () => {
 
         const nextBtn = screen.getByTitle(/Next/i);
 
-        // 2. First click should reveal All Day Event (priority)
+        // 2. First click should reveal Timed Event (priority)
         await act(async () => {
             fireEvent.click(nextBtn);
         });
-        expect(await screen.findByText('All Day Event')).toBeInTheDocument();
-        expect(screen.queryByText('Timed Event')).not.toBeInTheDocument();
-
-        // 3. Second click should reveal Timed Event
-        await act(async () => {
-            fireEvent.click(nextBtn);
-        });
-        expect(screen.getByText('All Day Event')).toBeInTheDocument();
         expect(await screen.findByText('Timed Event')).toBeInTheDocument();
+        expect(screen.queryByText('All Day Event')).not.toBeInTheDocument();
+
+        // 3. Second click should reveal All Day Event
+        await act(async () => {
+            fireEvent.click(nextBtn);
+        });
+        expect(screen.getByText('Timed Event')).toBeInTheDocument();
+        expect(await screen.findByText('All Day Event')).toBeInTheDocument();
     });
 });

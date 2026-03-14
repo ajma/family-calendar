@@ -30,7 +30,7 @@ describe('Attendee Normalization Utilities', () => {
     expect(map.get('charlie@home.com')).toEqual(CHARLIE);
   });
 
-  it('normalizeAttendees dedups based on identity but PRESERVES original attendee data', () => {
+  it('normalizeAttendees dedups based on identity and NORMALIZES to primary identity', () => {
     const emailMap = buildEmailMap([CHARLIE]);
     const attendees = [
       { email: 'charlie@work.com', displayName: 'Charlie Work' },
@@ -41,9 +41,9 @@ describe('Attendee Normalization Utilities', () => {
     const result = normalizeAttendees(attendees, emailMap);
     
     expect(result).toHaveLength(2);
-    // Verified: First occurrence preserved
-    expect(result[0].email).toBe('charlie@work.com'); 
-    expect(result[0].displayName).toBe('Charlie Work');
+    // Verified: First occurrence resolved to primary
+    expect(result[0].email).toBe('charlie@primary.com'); 
+    expect(result[0].displayName).toBe('Charlie');
     expect(result[1].email).toBe('guest@other.com');
   });
 });
