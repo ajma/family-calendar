@@ -28,6 +28,7 @@
     box-shadow: none !important;
     border-radius: 0 !important;
     display: block !important;
+    background-color: white !important;
     zoom: 0.85;
   }
 
@@ -73,7 +74,7 @@
     padding: 1rem 0 0 0 !important;
     overflow: visible !important;
     height: auto !important;
-    background: none !important;
+    background-color: white !important;
     display: block !important;
   }
 

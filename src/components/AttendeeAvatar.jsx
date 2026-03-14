@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 
+export const findPersonByEmail = (people, email) => {
+  if (!email) return null;
+  return people.find(p => 
+    p.email === email || 
+    (p.alternateEmails && p.alternateEmails.includes(email))
+  );
+};
+
 export const getAttendeeColor = (attendeeEmail) => {
   const people = JSON.parse(localStorage.getItem('people') || '[]');
-  const person = people.find(p => p.email === attendeeEmail);
+  const person = findPersonByEmail(people, attendeeEmail);
   return person ? person.color : 'var(--text-secondary)';
 };
 
@@ -11,7 +19,7 @@ const AttendeeAvatar = ({ attendee, index }) => {
 
   // Lookup person in local storage
   const people = JSON.parse(localStorage.getItem('people') || '[]');
-  const person = people.find(p => p.email === attendee.email);
+  const person = findPersonByEmail(people, attendee.email);
 
   // Fallbacks if not found
   const name = person ? person.name : (attendee.displayName || attendee.email || 'Unknown');
