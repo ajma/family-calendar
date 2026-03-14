@@ -167,6 +167,27 @@ function App() {
             
             if (presentationMode) {
               filteredEvents = [...filteredEvents].sort((a, b) => {
+                const getLocalDateStr = (event) => {
+                  if (event.start.date) return event.start.date;
+                  const d = new Date(event.start.dateTime);
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                };
+
+                const dayA = getLocalDateStr(a);
+                const dayB = getLocalDateStr(b);
+
+                if (dayA !== dayB) {
+                  return dayA.localeCompare(dayB);
+                }
+
+                // Same day: All-day events first
+                const isAllDayA = !a.start.dateTime;
+                const isAllDayB = !b.start.dateTime;
+                if (isAllDayA !== isAllDayB) {
+                  return isAllDayA ? -1 : 1;
+                }
+
+                // Tie-breaker: chronological order
                 const dateA = new Date(a.start.dateTime || a.start.date);
                 const dateB = new Date(b.start.dateTime || b.start.date);
                 return dateA - dateB;

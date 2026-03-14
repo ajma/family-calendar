@@ -179,3 +179,11 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Shows a `+N` overflow badge when there are more than 6 attendees.
 - Does not show an overflow badge for exactly 6 attendees.
 - Uses a gradient border when multiple attendees have different colors.
+
+---
+
+### Presentation Mode
+- [x] **Event Sorting**: Verify that on a given day, all-day events are revealed before timed events.
+    - Setup: One all-day event "A" and one event "B" at 10:00 AM on Monday.
+    - Action: Enter presentation mode.
+    - Expected: Event "A" shows up first, then event "B".

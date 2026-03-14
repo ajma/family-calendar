@@ -109,4 +109,49 @@ describe('Presentation Mode', () => {
         // Ensure header elements reappear
         expect(await screen.findByText(/Settings/i)).toBeInTheDocument();
     });
+
+    it('reveals all-day events before timed events on the same day', async () => {
+        const { fetchEvents } = await import('../services/backend');
+        vi.mocked(fetchEvents).mockResolvedValue([
+            { 
+                id: 'allday', 
+                summary: 'All Day Event', 
+                start: { date: '2026-03-13' }, 
+                end: { date: '2026-03-14' } 
+            },
+            { 
+                id: 'timed', 
+                summary: 'Timed Event', 
+                start: { dateTime: '2026-03-13T20:00:00Z' }, 
+                end: { dateTime: '2026-03-13T21:00:00Z' } 
+            }
+        ]);
+
+        localStorage.setItem('session_token', 'fake-token');
+        await act(async () => {
+            render(<App />);
+        });
+
+        // 1. Enter Presentation Mode
+        const presentBtn = await screen.findByText(/Present/i);
+        await act(async () => {
+            fireEvent.click(presentBtn);
+        });
+
+        const nextBtn = screen.getByTitle(/Next/i);
+
+        // 2. First click should reveal All Day Event (priority)
+        await act(async () => {
+            fireEvent.click(nextBtn);
+        });
+        expect(await screen.findByText('All Day Event')).toBeInTheDocument();
+        expect(screen.queryByText('Timed Event')).not.toBeInTheDocument();
+
+        // 3. Second click should reveal Timed Event
+        await act(async () => {
+            fireEvent.click(nextBtn);
+        });
+        expect(screen.getByText('All Day Event')).toBeInTheDocument();
+        expect(await screen.findByText('Timed Event')).toBeInTheDocument();
+    });
 });
