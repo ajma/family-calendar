@@ -25,8 +25,16 @@ const WeekGrid = ({ currentDate, events }) => {
   });
 
   events.forEach(event => {
-    const eDate = new Date(event.start.dateTime || event.start.date);
-    const dayStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+    let dayStr;
+    if (event.start.date) {
+      // All-day event: use the date string directly (YYYY-MM-DD)
+      dayStr = event.start.date;
+    } else {
+      // Regular event: parse dateTime and format in local time
+      const eDate = new Date(event.start.dateTime);
+      dayStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+    }
+
     if (eventsByDay[dayStr]) {
       eventsByDay[dayStr].push(event);
     }

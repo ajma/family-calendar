@@ -151,9 +151,8 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Week starts on Monday.
 - Week ends on Sunday.
 - Places an event on the correct day column.
-- Shows "No events" in all 7 columns when the event list is empty.
-- Does not show "No events" in a column that has an event.
-- Handles all-day events (`start.date` only) on the correct day.
+- Verifies that no "No events" empty state text is shown (removed in favor of clean UI).
+- Handles all-day events (`start.date` only) on the correct day (verifies placement by column index to prevent timezone shifts).
 - Ignores events that fall outside the current week.
 - Correctly calculates the week when the current day is Sunday (edge case).
 

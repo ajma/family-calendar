@@ -49,29 +49,29 @@ describe('WeekGrid', () => {
     expect(screen.getByText('Wednesday Meeting')).toBeInTheDocument();
   });
 
-  it('shows "No events" in columns that have no events', () => {
+  it('does not show any empty state text in columns that have no events', () => {
     render(<WeekGrid currentDate={FIXED_WEDNESDAY} events={[]} />);
-    const emptyMessages = screen.getAllByText('No events');
-    expect(emptyMessages).toHaveLength(7);
-  });
-
-  it('does not show "No events" in a column that has an event', () => {
-    const event = makeEvent({ summary: 'Wednesday Meeting' });
-    render(<WeekGrid currentDate={FIXED_WEDNESDAY} events={[event]} />);
-    // 6 empty days + 1 day that has an event (not "No events")
-    const emptyMessages = screen.getAllByText('No events');
-    expect(emptyMessages).toHaveLength(6);
+    // Since we removed 'No events', there should be no such text
+    expect(screen.queryByText('No events')).not.toBeInTheDocument();
   });
 
   it('places an all-day event (start.date only) on the correct day', () => {
     const allDayEvent = {
       id: 'all-day-evt',
       summary: 'Family Holiday',
-      start: { date: '2024-03-13' },
+      start: { date: '2024-03-13' }, // Wednesday
       end:   { date: '2024-03-14' },
     };
     render(<WeekGrid currentDate={FIXED_WEDNESDAY} events={[allDayEvent]} />);
-    expect(screen.getByText('Family Holiday')).toBeInTheDocument();
+    
+    const columns = document.querySelectorAll('.day-column');
+    // Monday (11), Tuesday (12), Wednesday (13) -> index 2
+    const wednesdayColumn = columns[2];
+    expect(wednesdayColumn).toHaveTextContent('Family Holiday');
+    
+    // Verify it's NOT in Tuesday (index 1) which was the bug
+    const tuesdayColumn = columns[1];
+    expect(tuesdayColumn).not.toHaveTextContent('Family Holiday');
   });
 
   it('ignores events that fall outside the current week', () => {
