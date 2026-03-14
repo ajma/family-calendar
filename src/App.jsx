@@ -17,10 +17,21 @@ import './styles/components.css';
 import './styles/presentation.css';
 import './styles/print.css';
 
+const VIEWS = {
+  MAIN: 'main',
+  SETTINGS: 'settings',
+  PRESENTATION: 'presentation'
+};
+
 function App() {
   const [sessionToken, setSessionToken] = useState(localStorage.getItem('session_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [view, setView] = useState(VIEWS.MAIN);
+
+  // State check helpers
+  const isPresentationMode = () => view === VIEWS.PRESENTATION;
+  const isSettingsOpen = () => view === VIEWS.SETTINGS;
+  const isMainView = () => view === VIEWS.MAIN;
 
   // Refs for keyboard navigation mapping
   const prevWeekRef = useRef(null);
@@ -50,12 +61,14 @@ function App() {
 
   // Presentation Mode Logic Hook
   const {
-    presentationMode,
     revealedCount,
-    togglePresentationMode,
     nextEvent,
     prevEvent
-  } = usePresentationMode();
+  } = usePresentationMode(isPresentationMode());
+
+  const togglePresentationMode = () => {
+    setView(prev => prev === VIEWS.PRESENTATION ? VIEWS.MAIN : VIEWS.PRESENTATION);
+  };
 
   // Sync data errors to main error state
   useEffect(() => {
@@ -108,7 +121,7 @@ function App() {
       const isTyping = tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
       if (isTyping) return;
 
-      if (presentationMode) {
+      if (isPresentationMode()) {
         // Presentation Mode Shortcuts
         if (e.key === 'ArrowRight' || e.key === ' ') {
           if (e.key === ' ') e.preventDefault();
@@ -118,7 +131,7 @@ function App() {
         } else if (e.key === 'Escape') {
           presentBtnRef.current?.click();
         }
-      } else if (!isSettingsOpen) {
+      } else if (isMainView()) {
         // Main View Shortcuts
         if (e.key === 'ArrowLeft') {
           prevWeekRef.current?.click();
@@ -133,11 +146,11 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [presentationMode, isSettingsOpen]);
+  }, [view]); // Depend on view to re-bind with correct helper results
 
   const handleFullReset = async () => {
     if (sessionToken) await resetSettings(sessionToken);
-    setIsSettingsOpen(false);
+    setView(VIEWS.MAIN);
     logout();
   };
 
@@ -145,7 +158,7 @@ function App() {
     // We can call the hook handlers to save both
     await handleSaveCalendars(newConfigs);
     await handleSaveAttendees(newPeople);
-    setIsSettingsOpen(false);
+    setView(VIEWS.MAIN);
   };
 
   return (
@@ -154,7 +167,7 @@ function App() {
         <header className="app-header">
           <h1>Family <span className="highlight-text">Calendar</span></h1>
 
-          {sessionToken && !presentationMode && (
+          {sessionToken && !isPresentationMode() && (
             <CalendarHeader
               currentDate={currentDate}
               onPrev={handlePrevWeek}
@@ -167,11 +180,11 @@ function App() {
           )}
 
           <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
-            {sessionToken && !presentationMode && (
+            {sessionToken && isMainView() && (
               <button 
                 className="control-btn glass" 
                 style={{ marginRight: '1rem' }} 
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={() => setView(VIEWS.SETTINGS)}
                 title="Settings"
               >
                 ⚙️ Settings
@@ -181,11 +194,11 @@ function App() {
             {sessionToken && (
               <button 
                 ref={presentBtnRef}
-                className={`control-btn glass ${presentationMode ? 'active-mode' : ''}`} 
+                className={`control-btn glass ${isPresentationMode() ? 'active-mode' : ''}`} 
                 style={{ marginRight: '1rem' }} 
                 onClick={togglePresentationMode}
               >
-                {presentationMode ? '⏹ End' : '▶ Present'}
+                {isPresentationMode() ? '⏹ End' : '▶ Present'}
               </button>
             )}
 
@@ -211,7 +224,7 @@ function App() {
           ) : (() => {
             let filteredEvents = filterHiddenAttendees(events, peopleDB);
             
-            if (presentationMode) {
+            if (isPresentationMode()) {
               filteredEvents = [...filteredEvents].sort((a, b) => {
                 const getLocalDateStr = (event) => {
                   if (event.start.date) return event.start.date;
@@ -245,7 +258,7 @@ function App() {
           })()}
         </main>
 
-        {presentationMode && (
+        {isPresentationMode() && (
           <PresentationControls 
             revealedCount={revealedCount}
             onPrev={prevEvent}
@@ -257,8 +270,8 @@ function App() {
 
         {sessionToken && (
           <SettingsModal
-            isOpen={isSettingsOpen}
-            onClose={() => setIsSettingsOpen(false)}
+            isOpen={isSettingsOpen()}
+            onClose={() => setView(VIEWS.MAIN)}
             calendars={calendars}
             calendarConfigs={calendarConfigs}
             people={peopleDB}
