@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
-import AttendeeEditor from './components/AttendeeEditor';
-import CalendarSelectorModal from './components/CalendarSelectorModal';
-import DebugModal from './components/DebugModal';
+import SettingsModal from './components/SettingsModal';
 import PresentationControls from './components/PresentationControls';
 import { usePresentationMode } from './hooks/usePresentationMode';
 import { useCalendarData } from './hooks/useCalendarData';
@@ -22,10 +20,7 @@ import './styles/print.css';
 function App() {
   const [sessionToken, setSessionToken] = useState(localStorage.getItem('session_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [isCalendarSelectorOpen, setIsCalendarSelectorOpen] = useState(false);
-  const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
-  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Core Data Logic Hook
   const {
@@ -37,6 +32,7 @@ function App() {
     loading,
     errorMSG: dataError,
     isAdmin,
+    userEmail,
     handlePrevWeek,
     handleNextWeek,
     handleToday,
@@ -58,12 +54,6 @@ function App() {
   useEffect(() => {
     if (dataError) setErrorMSG(dataError);
   }, [dataError]);
-
-  // Check for debug mode in URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('debug') === '1') setIsDebugMode(true);
-  }, []);
 
   const login = useGoogleLogin({
     flow: 'auth-code',
@@ -104,8 +94,15 @@ function App() {
 
   const handleFullReset = async () => {
     if (sessionToken) await resetSettings(sessionToken);
-    setIsDebugModalOpen(false);
+    setIsSettingsOpen(false);
     logout();
+  };
+
+  const handleSettingsSave = async (newConfigs, newPeople) => {
+    // We can call the hook handlers to save both
+    await handleSaveCalendars(newConfigs);
+    await handleSaveAttendees(newPeople);
+    setIsSettingsOpen(false);
   };
 
   return (
@@ -126,12 +123,14 @@ function App() {
 
           <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
             {sessionToken && !presentationMode && (
-              <>
-                {calendars.length > 0 && (
-                  <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsCalendarSelectorOpen(true)}>📅 Calendars</button>
-                )}
-                <button className="control-btn glass" style={{ marginRight: '1rem' }} onClick={() => setIsEditorOpen(true)}>👥 Attendees</button>
-              </>
+              <button 
+                className="control-btn glass" 
+                style={{ marginRight: '1rem' }} 
+                onClick={() => setIsSettingsOpen(true)}
+                title="Settings"
+              >
+                ⚙️ Settings
+              </button>
             )}
 
             {sessionToken && (
@@ -144,9 +143,7 @@ function App() {
               </button>
             )}
 
-            {sessionToken && !presentationMode ? (
-              <button className="control-btn glass" onClick={logout}>Sign Out</button>
-            ) : !sessionToken && (
+            {!sessionToken && (
               <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
             )}
           </div>
@@ -189,61 +186,19 @@ function App() {
           />
         )}
 
-        <AttendeeEditor
-          isOpen={isEditorOpen}
-          onClose={() => setIsEditorOpen(false)}
-          people={peopleDB}
-          onSave={handleSaveAttendees}
-        />
-
-        <CalendarSelectorModal
-          isOpen={isCalendarSelectorOpen}
-          onClose={() => setIsCalendarSelectorOpen(false)}
-          calendars={calendars}
-          calendarConfigs={calendarConfigs}
-          people={peopleDB}
-          onSave={handleSaveCalendars}
-        />
-
-        {isDebugMode && sessionToken && isAdmin && (
-          <>
-            <button
-              onClick={() => setIsDebugModalOpen(true)}
-              title="Open Debug Panel"
-              className="debug-trigger"
-              style={{
-                position: 'fixed',
-                bottom: '2rem',
-                right: '2rem',
-                width: '3.5rem',
-                height: '3.5rem',
-                borderRadius: '50%',
-                backgroundColor: 'var(--surface-color)',
-                border: '1px solid var(--border-color)',
-                boxShadow: 'var(--shadow-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                cursor: 'pointer',
-                zIndex: 999,
-                transition: 'transform var(--transition-fast)'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              🐛
-            </button>
-
-            <DebugModal
-              isOpen={isDebugModalOpen}
-              onClose={() => setIsDebugModalOpen(false)}
-              onBackendSave={async (configs, people) => {
-                if (sessionToken) await saveSettings(sessionToken, configs, people);
-              }}
-              onFullReset={handleFullReset}
-            />
-          </>
+        {sessionToken && (
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            calendars={calendars}
+            calendarConfigs={calendarConfigs}
+            people={peopleDB}
+            userEmail={userEmail}
+            isAdmin={isAdmin}
+            onSave={handleSettingsSave}
+            onLogout={logout}
+            onFullReset={handleFullReset}
+          />
         )}
       </div>
       <footer className="version-label">

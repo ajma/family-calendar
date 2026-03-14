@@ -28,6 +28,7 @@ export function useCalendarData(sessionToken) {
     }
   });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('user_email') || '');
 
   // Load initial settings
   useEffect(() => {
@@ -36,6 +37,9 @@ export function useCalendarData(sessionToken) {
       try {
         const settings = await fetchSettings(sessionToken);
         setIsAdmin(!!settings.isAdmin);
+        const email = settings.email || '';
+        setUserEmail(email);
+        localStorage.setItem('user_email', email);
         if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
           setCalendarConfigs(settings.calendarConfigs);
           localStorage.setItem('calendar_configs', JSON.stringify(settings.calendarConfigs));
@@ -191,6 +195,7 @@ export function useCalendarData(sessionToken) {
     loading,
     errorMSG,
     isAdmin,
+    userEmail,
     handlePrevWeek,
     handleNextWeek,
     handleToday,

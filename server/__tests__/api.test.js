@@ -51,6 +51,7 @@ describe('Backend API Tests', () => {
                 .get('/api/settings')
                 .set('Authorization', `Bearer ${TEST_TOKEN}`);
             expect(res.status).toBe(200);
+            expect(res.body.email).toBe('test@example.com');
             expect(res.body.calendarConfigs).toEqual({});
             expect(res.body.people).toEqual([]);
         });
@@ -76,6 +77,7 @@ describe('Backend API Tests', () => {
                 .set('Authorization', `Bearer ${TEST_TOKEN}`);
 
             expect(getRes.status).toBe(200);
+            expect(getRes.body.email).toBe('test@example.com');
             expect(getRes.body.calendarConfigs).toEqual(newSettings.calendarConfigs);
             expect(getRes.body.people).toEqual(newSettings.people);
         });

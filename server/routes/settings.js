@@ -15,9 +15,10 @@ router.get('/', authenticateSession, async (req, res) => {
 
         const settings = await getUserSettings(userId);
         if (!settings) {
-            return res.json({ calendarConfigs: {}, people: [], isAdmin });
+            return res.json({ email: userId, calendarConfigs: {}, people: [], isAdmin });
         }
         res.json({
+            email: userId,
             calendarConfigs: settings.calendarConfigs || {},
             people: settings.people || [],
             isAdmin,

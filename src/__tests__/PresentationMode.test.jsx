@@ -60,8 +60,7 @@ describe('Presentation Mode', () => {
         });
 
         // 2. Verify header is simplified (other buttons hidden)
-        expect(screen.queryByText(/Calendars/i)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Attendees/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Settings/i)).not.toBeInTheDocument();
 
         // 3. Verify no events are shown initially
         expect(screen.queryByText('Event 1')).not.toBeInTheDocument();
@@ -108,7 +107,6 @@ describe('Presentation Mode', () => {
         });
         
         // Ensure header elements reappear
-        expect(await screen.findByText(/Calendars/i)).toBeInTheDocument();
-        expect(screen.getByText(/Attendees/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Settings/i)).toBeInTheDocument();
     });
 });

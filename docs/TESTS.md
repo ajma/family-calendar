@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 78 tests across 10 files.**
+**Total: 63 tests across 8 files.**
 
 To run:
 
@@ -120,45 +120,28 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/components/__tests__/AttendeeEditor.test.jsx`
+### `src/components/__tests__/SettingsModal.test.jsx`
 
-- Does not render when `isOpen={false}`.
-- Renders existing people and allows adding a new person.
-- Allows editing a person's name and emits the updated data via `onSave`.
-- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
-
----
-
-### `src/components/__tests__/DebugModal.test.jsx`
-
-- Loads only `calendar_configs` and `people` from `localStorage` into the textarea.
-- **Data Filtering**: Correctly handles loading and saving only the core data keys, ignoring tokens or library-specific metadata.
-- Saves edited JSON to `localStorage` and calls `onBackendSave`.
-- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
-
----
-
-### `src/components/__tests__/CalendarSelectorModal.test.jsx`
-
-- Does not render when `isOpen={false}`.
-- Renders a checkbox for each calendar.
-- Sorts calendars alphabetically.
-- Shows "No calendars found." when the list is empty.
-- Checking a calendar marks it as selected.
-- Unchecking a calendar marks it as not selected.
-- "Cancel" does not call `onSave`.
-- "Cancel" calls `onClose`.
-- "Apply Changes" calls `onSave` with the updated config.
-- "Apply Changes" calls `onClose` after saving.
-- Shows the emoji picker button and hashtag input when a calendar is selected.
-- Does not show emoji picker button when a calendar is not selected.
-- Shows the emoji picker search/text area when the button is clicked.
-- Shows assigned emoji in the button.
-- Shows a plus sign (`＋`) when no emoji is assigned.
-- Clears the emoji when "No Emoji" is clicked.
-- Shows the person dropdown when a calendar is selected and people exist.
-- **Keyboard Shortcuts**: Closes the dialog when the **Escape** key is pressed.
-- **Two-Stage Escape**: Pressing **Escape** first closes the active emoji picker; a second press closes the modal.
+- **Vertical Navigation**: Verifies that user can switch between Calendars, Attendees, Account, and Debug tabs.
+- **Unsaved Changes Guard**: Confirms that trying to close (Escape/Cancel) after a change triggers a confirmation prompt.
+- **Tab Persistence**: Verifies that changes made in one tab (e.g. attendee name) are preserved when switching to another tab before saving.
+- **Unified Save**: Confirms that one "Save Changes" click persists both calendar configurations and people records.
+- **Calendars Tab**:
+    - Renders a checkbox for each calendar.
+    - Sorting: Lists calendars alphabetically.
+    - Emoji Picker: Toggles picker visibility; verifies emoji selection/removal.
+    - Auto-Assignment: Confirms that people can be associated with specific calendars.
+- **Attendees Tab**:
+    - CRUD: Allows editing names, emails, and colors.
+    - Initials Logic: Automatically generates 2-letter uppercase initials.
+- **Account Tab**:
+    - Identity: Displays the currently logged-in user email.
+    - Sign Out: Triggers the logout flow.
+- **Debug Tab**:
+    - Admin-Only: Only visible when `isAdmin` is true.
+    - Safety: Displays a prominent warning disclaimer.
+    - Factory Reset: Verifies the two-stage "DELETE" confirmation flow before wiping data.
+- **Keyboard Navigation**: Closes the dialog via **Escape** (with dirty check).
 
 ---
 
