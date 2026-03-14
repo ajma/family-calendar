@@ -3,6 +3,7 @@ import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
 import SettingsModal from './components/SettingsModal';
+import HelpModal from './components/HelpModal';
 import PresentationControls from './components/PresentationControls';
 import { usePresentationMode } from './hooks/usePresentationMode';
 import { useCalendarData } from './hooks/useCalendarData';
@@ -20,7 +21,8 @@ import './styles/print.css';
 const VIEWS = {
   MAIN: 'main',
   SETTINGS: 'settings',
-  PRESENTATION: 'presentation'
+  PRESENTATION: 'presentation',
+  HELP: 'help'
 };
 
 function App() {
@@ -28,15 +30,14 @@ function App() {
   const [errorMSG, setErrorMSG] = useState(null);
   const [view, setView] = useState(VIEWS.MAIN);
 
-  // State check helpers
-  const isPresentationMode = () => view === VIEWS.PRESENTATION;
-  const isSettingsOpen = () => view === VIEWS.SETTINGS;
-  const isMainView = () => view === VIEWS.MAIN;
+  // Dynamic View Helper
+  const isView = (target) => view === target;
 
   // Refs for keyboard navigation mapping
   const prevWeekRef = useRef(null);
   const nextWeekRef = useRef(null);
   const presentBtnRef = useRef(null);
+  const helpBtnRef = useRef(null);
   const presentationPrevRef = useRef(null);
   const presentationNextRef = useRef(null);
 
@@ -64,7 +65,7 @@ function App() {
     revealedCount,
     nextEvent,
     prevEvent
-  } = usePresentationMode(isPresentationMode());
+  } = usePresentationMode(isView(VIEWS.PRESENTATION));
 
   const togglePresentationMode = () => {
     setView(prev => prev === VIEWS.PRESENTATION ? VIEWS.MAIN : VIEWS.PRESENTATION);
@@ -121,7 +122,7 @@ function App() {
       const isTyping = tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
       if (isTyping) return;
 
-      if (isPresentationMode()) {
+      if (isView(VIEWS.PRESENTATION)) {
         // Presentation Mode Shortcuts
         if (e.key === 'ArrowRight' || e.key === ' ') {
           if (e.key === ' ') e.preventDefault();
@@ -131,7 +132,7 @@ function App() {
         } else if (e.key === 'Escape') {
           presentBtnRef.current?.click();
         }
-      } else if (isMainView()) {
+      } else if (isView(VIEWS.MAIN)) {
         // Main View Shortcuts
         if (e.key === 'ArrowLeft') {
           prevWeekRef.current?.click();
@@ -140,6 +141,12 @@ function App() {
         } else if (e.key === ' ') {
           e.preventDefault();
           presentBtnRef.current?.click();
+        } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+          helpBtnRef.current?.click();
+        }
+      } else if (isView(VIEWS.HELP)) {
+        if (e.key === 'Escape') {
+          setView(VIEWS.MAIN);
         }
       }
     };
@@ -167,7 +174,7 @@ function App() {
         <header className="app-header">
           <h1>Family <span className="highlight-text">Calendar</span></h1>
 
-          {sessionToken && !isPresentationMode() && (
+          {sessionToken && !isView(VIEWS.PRESENTATION) && (
             <CalendarHeader
               currentDate={currentDate}
               onPrev={handlePrevWeek}
@@ -180,7 +187,7 @@ function App() {
           )}
 
           <div className="auth-controls" style={{ display: 'flex', alignItems: 'center' }}>
-            {sessionToken && isMainView() && (
+            {sessionToken && isView(VIEWS.MAIN) && (
               <button 
                 className="control-btn glass" 
                 style={{ marginRight: '1rem' }} 
@@ -191,14 +198,26 @@ function App() {
               </button>
             )}
 
+            {sessionToken && isView(VIEWS.MAIN) && (
+              <button 
+                ref={helpBtnRef}
+                className="control-btn glass help-trigger" 
+                style={{ marginRight: '1rem' }} 
+                title="Help (?)"
+                onClick={() => setView(VIEWS.HELP)}
+              >
+                ❓ Help
+              </button>
+            )}
+
             {sessionToken && (
               <button 
                 ref={presentBtnRef}
-                className={`control-btn glass ${isPresentationMode() ? 'active-mode' : ''}`} 
+                className={`control-btn glass ${isView(VIEWS.PRESENTATION) ? 'active-mode' : ''}`} 
                 style={{ marginRight: '1rem' }} 
                 onClick={togglePresentationMode}
               >
-                {isPresentationMode() ? '⏹ End' : '▶ Present'}
+                {isView(VIEWS.PRESENTATION) ? '⏹ End' : '▶ Present'}
               </button>
             )}
 
@@ -224,7 +243,7 @@ function App() {
           ) : (() => {
             let filteredEvents = filterHiddenAttendees(events, peopleDB);
             
-            if (isPresentationMode()) {
+            if (isView(VIEWS.PRESENTATION)) {
               filteredEvents = [...filteredEvents].sort((a, b) => {
                 const getLocalDateStr = (event) => {
                   if (event.start.date) return event.start.date;
@@ -258,7 +277,7 @@ function App() {
           })()}
         </main>
 
-        {isPresentationMode() && (
+        {isView(VIEWS.PRESENTATION) && (
           <PresentationControls 
             revealedCount={revealedCount}
             onPrev={prevEvent}
@@ -270,7 +289,7 @@ function App() {
 
         {sessionToken && (
           <SettingsModal
-            isOpen={isSettingsOpen()}
+            isOpen={isView(VIEWS.SETTINGS)}
             onClose={() => setView(VIEWS.MAIN)}
             calendars={calendars}
             calendarConfigs={calendarConfigs}
@@ -282,6 +301,11 @@ function App() {
             onFullReset={handleFullReset}
           />
         )}
+
+        <HelpModal 
+          isOpen={isView(VIEWS.HELP)} 
+          onClose={() => setView(VIEWS.MAIN)} 
+        />
       </div>
       <footer className="version-label">
         v{import.meta.env.PACKAGE_VERSION}

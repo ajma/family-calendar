@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 77 tests across 9 files.**
+**Total: 80 tests across 9 files.**
 
 To run:
 
@@ -17,6 +17,7 @@ npm run test
 - **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
 - **Header Simplification**: Confirms that other buttons are hidden during presentation.
 - **Keyboard Navigation**: Verifies that Arrow keys and Escape key function correctly.
+- **Sorting Logic**: Ensures timed events are revealed before all-day events on the same day.
 - **Exit Logic**: Ensures all UI elements reappear after exiting.
 
 ---
@@ -93,9 +94,10 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Prepends the calendar emoji to the event summary.
 - Does not modify summary when no emoji is configured.
 - Does not crash when the event has no summary.
-- Adds the assigned person as an attendee when not already present.
+- Adds the assigned person as an attendee when not already present (normalized to primary identity).
 - Does not add the assigned person as a duplicate if already an attendee.
 - Does nothing if the assigned email doesn't match any person in `peopleDB`.
+- **Normalization**: Ensures attendees resolved via alternate emails are converted to their primary email and name.
 - `#allfamily`: Adds every person in `peopleDB` as an attendee.
 - `#allfamily`: Case-insensitive (`#ALLFAMILY` works the same way).
 - `#allfamily`: Does not add duplicates if a person is already an attendee.
@@ -191,4 +193,6 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
     - `ArrowLeft` triggers the "Previous" (<) button in presentation mode.
     - `Escape` triggers the "End" button click to exit presentation mode.
 - **Input Inhibition**: Confirms that global shortcuts are disabled when typing in any input field or within the Settings modal.
+- **Help Shortcut**: Verifies that `?`, `h`, or `H` opens the User Guide.
+- **Focused Button Reliability**: A regression test ensuring that shortcuts (like ArrowRight) still work even when a button (like "End") has browser focus.
 - **Button Mapping**: Ensures that every keyboard shortcut literally triggers a `click()` on a DOM element for consistent behavior.

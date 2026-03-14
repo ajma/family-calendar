@@ -133,4 +133,28 @@ describe('Keyboard Shortcuts (Button Mapped)', () => {
         // SHOULD trigger click
         expect(nextSpy).toHaveBeenCalled();
     });
+
+    it('opens help guide using "?" key', async () => {
+        localStorage.setItem('session_token', 'fake-token');
+        render(<App />, { wrapper: Wrapper });
+
+        const helpBtn = await screen.findByTitle(/Help/i);
+        const helpSpy = vi.spyOn(helpBtn, 'click');
+
+        // Press ?
+        fireEvent.keyDown(window, { key: '?', code: 'KeyH', shiftKey: true });
+        
+        expect(helpSpy).toHaveBeenCalled();
+        
+        // Modal should be visible
+        expect(await screen.findByText(/User Guide/i)).toBeInTheDocument();
+
+        // Press Escape to close
+        fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+        
+        // Modal should be gone
+        await waitFor(() => {
+            expect(screen.queryByText(/User Guide/i)).not.toBeInTheDocument();
+        });
+    });
 });
