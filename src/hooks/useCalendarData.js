@@ -1,0 +1,201 @@
+import { useState, useEffect } from 'react';
+import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
+import { annotateEvents } from '../utils/annotateEnrichment';
+import { AVATAR_ICON_COLORS } from '../constants';
+
+export function useCalendarData(sessionToken) {
+  const [currentDate, setCurrentDate] = useState(() => {
+    const savedDate = localStorage.getItem('selected_date');
+    return savedDate ? new Date(savedDate) : new Date();
+  });
+  const [events, setEvents] = useState([]);
+  const [calendars, setCalendars] = useState([]);
+  const [calendarConfigs, setCalendarConfigs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('calendar_configs');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [loading, setLoading] = useState(false);
+  const [errorMSG, setErrorMSG] = useState(null);
+  const [peopleDB, setPeopleDB] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('people') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Load initial settings
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!sessionToken) return;
+      try {
+        const settings = await fetchSettings(sessionToken);
+        setIsAdmin(!!settings.isAdmin);
+        if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
+          setCalendarConfigs(settings.calendarConfigs);
+          localStorage.setItem('calendar_configs', JSON.stringify(settings.calendarConfigs));
+        }
+        if (settings.people && settings.people.length > 0) {
+          setPeopleDB(settings.people);
+          localStorage.setItem('people', JSON.stringify(settings.people));
+        }
+      } catch (e) {
+        console.error('Failed to load settings from DB', e);
+      }
+    };
+    loadUserData();
+  }, [sessionToken]);
+
+  const persistSettings = async (configs, people) => {
+    localStorage.setItem('calendar_configs', JSON.stringify(configs));
+    localStorage.setItem('people', JSON.stringify(people));
+    if (sessionToken) {
+      await saveSettings(sessionToken, configs, people);
+    }
+  };
+
+  const loadCalendars = async () => {
+    if (!sessionToken) return;
+    try {
+      const data = await fetchCalendars(sessionToken);
+      setCalendars(data);
+
+      const primaryCal = data.find(c => c.primary);
+      if (primaryCal) {
+        setCalendarConfigs(prev => {
+          const hasSelections = Object.values(prev).some(config => config.selected);
+          if (!hasSelections) {
+            const newConfigs = {
+              ...prev,
+              [primaryCal.id]: { ...prev[primaryCal.id], selected: true }
+            };
+            persistSettings(newConfigs, peopleDB).catch(e => console.error(e));
+            return newConfigs;
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load calendars', error);
+    }
+  };
+
+  const loadEvents = async () => {
+    if (!sessionToken) return;
+    setLoading(true);
+    setErrorMSG(null);
+    try {
+      const dayOfWeek = currentDate.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const startOfWeek = new Date(currentDate);
+      startOfWeek.setDate(currentDate.getDate() + mondayOffset);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      let eventsData = await fetchEvents(sessionToken, startOfWeek.toISOString(), endOfWeek.toISOString());
+      eventsData = annotateEvents(eventsData, calendarConfigs, peopleDB);
+      setEvents(eventsData);
+
+      // Discover new people from attendees
+      const peopleMap = new Map();
+      peopleDB.forEach(person => peopleMap.set(person.email, person));
+      let discoveredNew = false;
+
+      eventsData.forEach(event => {
+        if (event.attendees) {
+          event.attendees.forEach(attendee => {
+            if (attendee.email && !peopleMap.has(attendee.email)) {
+              discoveredNew = true;
+              const name = attendee.displayName || attendee.email;
+              const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              const usedColors = Array.from(peopleMap.values()).map(p => p.color);
+              let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
+              if (!newColor) {
+                newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+              }
+              peopleMap.set(attendee.email, { name, initials, email: attendee.email, color: newColor });
+            }
+          });
+        }
+      });
+
+      if (discoveredNew) {
+        const newPeopleDB = Array.from(peopleMap.values());
+        setPeopleDB(newPeopleDB);
+        persistSettings(calendarConfigs, newPeopleDB).catch(e => console.error(discoveringPeopleError, e));
+      }
+    } catch (error) {
+      console.error('Failed to load events', error);
+      setErrorMSG(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sessionToken) {
+      loadCalendars();
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    if (sessionToken) {
+      loadEvents();
+    }
+  }, [currentDate, sessionToken, calendarConfigs]);
+
+  const handlePrevWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() - 7);
+    setCurrentDate(newDate);
+    localStorage.setItem('selected_date', newDate.toISOString());
+  };
+
+  const handleNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + 7);
+    setCurrentDate(newDate);
+    localStorage.setItem('selected_date', newDate.toISOString());
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    localStorage.setItem('selected_date', today.toISOString());
+  };
+
+  const handleSaveAttendees = async (updatedPeople) => {
+    setPeopleDB(updatedPeople);
+    await persistSettings(calendarConfigs, updatedPeople);
+  };
+
+  const handleSaveCalendars = async (newConfigs) => {
+    setCalendarConfigs(newConfigs);
+    await persistSettings(newConfigs, peopleDB);
+  };
+
+  return {
+    currentDate,
+    events,
+    calendars,
+    calendarConfigs,
+    peopleDB,
+    loading,
+    errorMSG,
+    isAdmin,
+    handlePrevWeek,
+    handleNextWeek,
+    handleToday,
+    loadEvents,
+    handleSaveAttendees,
+    handleSaveCalendars
+  };
+}

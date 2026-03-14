@@ -36,7 +36,7 @@ export const exchangeCode = async (code) =>
 // ─── Google Calendar (proxied via backend) ────────────────────────────────────
 
 export const fetchCalendars = async (token) =>
-    apiClient('/api/calendars', { headers: authHeader(token) });
+    apiClient('/api/calendar/list', { headers: authHeader(token) });
 
 /**
  * Fetch calendar events for the given time range via the backend.
@@ -45,6 +45,6 @@ export const fetchCalendars = async (token) =>
  * @param {string} timeMax - ISO 8601 string
  */
 export const fetchEvents = async (token, timeMin, timeMax) =>
-    apiClient(`/api/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
+    apiClient(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
         headers: authHeader(token),
     });

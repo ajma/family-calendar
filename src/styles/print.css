@@ -1,0 +1,124 @@
+/* High-Fidelity Print Styles */
+
+@media print {
+  @page {
+    margin: 0.5in;
+    size: landscape;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body,
+  html {
+    background-color: white !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    font-size: 11px !important;
+  }
+
+  .app-container {
+    height: auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    display: block !important;
+    zoom: 0.85;
+  }
+
+  .presentation-controls {
+    display: none !important;
+  }
+
+  .app-header {
+    padding: 0 0 0.5rem 0 !important;
+    border-bottom: 2px solid var(--border-color) !important;
+    background: none !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .app-header h1 {
+    margin: 0 !important;
+    font-size: 1.25rem !important;
+  }
+
+  .calendar-controls {
+    display: block !important;
+  }
+
+  .control-btn,
+  .nav-group,
+  .auth-controls {
+    display: none !important;
+  }
+
+  .current-month {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 1.1rem !important;
+    text-align: right !important;
+  }
+
+  .app-main {
+    padding: 1rem 0 0 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: none !important;
+    display: block !important;
+  }
+
+  .week-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .day-column {
+    flex: 1 1 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    break-inside: avoid;
+    background: white !important;
+    border: 1px solid var(--border-color) !important;
+  }
+
+  .day-events {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    flex: none !important;
+  }
+
+  .event-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: var(--surface-color) !important;
+    border: 1px solid var(--border-color) !important;
+    margin-bottom: 0.5rem !important;
+    box-shadow: none !important;
+  }
+
+  .event-card::before {
+    display: none !important;
+  }
+
+  .glass {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
