@@ -7,11 +7,42 @@ const formatTime = (isoString) => {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-const EventCard = ({ event }) => {
-  // Extract time from event
-  const startTime = formatTime(event.start.dateTime);
-  const endTime = formatTime(event.end.dateTime);
-  const timeString = startTime ? `${startTime} - ${endTime}` : 'All Day';
+const EventCard = ({ event, currentDay }) => {
+  // Helpers for multiday logic
+  const isAllDay = !!event.start.date;
+  
+  const getDisplayTime = () => {
+    if (isAllDay) return 'All Day';
+    if (!event.start.dateTime || !event.end.dateTime) return 'All Day';
+    if (!currentDay) return `${formatTime(event.start.dateTime)} - ${formatTime(event.end.dateTime)}`;
+
+    const start = new Date(event.start.dateTime);
+    const end = new Date(event.end.dateTime);
+    
+    // Normalize currentDay to start of day for comparison
+    const dayStart = new Date(currentDay);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(currentDay);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const startsBeforeToday = start < dayStart;
+    const endsAfterToday = end > dayEnd;
+
+    const startTimeStr = formatTime(event.start.dateTime);
+    const endTimeStr = formatTime(event.end.dateTime);
+
+    if (startsBeforeToday && endsAfterToday) {
+      return 'All Day';
+    } else if (startsBeforeToday) {
+      return `→ ${endTimeStr}`;
+    } else if (endsAfterToday) {
+      return `${startTimeStr} →`;
+    } else {
+      return `${startTimeStr} - ${endTimeStr}`;
+    }
+  };
+
+  const timeString = getDisplayTime();
 
   // Extract attendees
   const rawAttendees = event.attendees || [];

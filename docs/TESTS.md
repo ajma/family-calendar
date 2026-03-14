@@ -153,6 +153,8 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Places an event on the correct day column.
 - Verifies that no "No events" empty state text is shown (removed in favor of clean UI).
 - Handles all-day events (`start.date` only) on the correct day (verifies placement by column index to prevent timezone shifts).
+- **Multiday Support**: Verifies that a 3-day all-day event appears in exactly 3 columns.
+- **Midnight Spanning**: Verifies that a timed event spanning midnight (e.g. 10 PM to 2 AM) appears in both columns.
 - Ignores events that fall outside the current week.
 - Correctly calculates the week when the current day is Sunday (edge case).
 
@@ -164,6 +166,11 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - Shows "Untitled Event" when summary is missing.
 - **Calculates a smaller font size** for very long titles to ensure visibility without truncation.
 - Shows "All Day" when the event has no `start.dateTime`.
+- **Multiday Time Display**:
+    - Shows full range for same-day events.
+    - Day 1: Shows `start time →` (e.g. `10:00 PM →`).
+    - Final Day: Shows `→ end time` (e.g. `→ 2:00 AM`).
+    - Middle Days: Shows `All Day`.
 - Does not render the attendee row when there are no attendees.
 - Renders one avatar per attendee (up to 6).
 - Shows a `+N` overflow badge when there are more than 6 attendees.

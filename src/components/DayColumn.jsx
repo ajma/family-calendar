@@ -26,7 +26,7 @@ const DayColumn = ({ date, events = [], isToday }) => {
       </div>
       <div className="day-events custom-scrollbar">
         {sortedEvents.map(event => (
-          <EventCard key={event.id} event={event} />
+          <EventCard key={event.id} event={event} currentDay={date} />
         ))}
       </div>
     </div>

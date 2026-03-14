@@ -19,25 +19,26 @@ const WeekGrid = ({ currentDate, events }) => {
   // Group events by day
   const eventsByDay = {};
   days.forEach(d => {
+    const dayStart = new Date(d);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(d);
+    dayEnd.setHours(23, 59, 59, 999);
+    
     // using YYYY-MM-DD as key
-    const currentDayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    eventsByDay[currentDayStr] = [];
-  });
-
-  events.forEach(event => {
-    let dayStr;
-    if (event.start.date) {
-      // All-day event: use the date string directly (YYYY-MM-DD)
-      dayStr = event.start.date;
-    } else {
-      // Regular event: parse dateTime and format in local time
-      const eDate = new Date(event.start.dateTime);
-      dayStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
-    }
-
-    if (eventsByDay[dayStr]) {
-      eventsByDay[dayStr].push(event);
-    }
+    const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    
+    eventsByDay[dayStr] = events.filter(event => {
+      if (event.start.date) {
+        // All-day event: use string comparison for safety.
+        // Google end dates are exclusive, so we check dayStr < end.date
+        return dayStr >= event.start.date && dayStr < event.end.date;
+      } else {
+        // Timed event: check for any overlap with the current day
+        const start = new Date(event.start.dateTime);
+        const end = new Date(event.end.dateTime);
+        return start <= dayEnd && end >= dayStart;
+      }
+    });
   });
 
   return (

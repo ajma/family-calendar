@@ -57,6 +57,47 @@ describe('EventCard', () => {
     expect(screen.getByText('All Day')).toBeInTheDocument();
   });
 
+  describe('Multiday time display', () => {
+    const wednesday = new Date('2024-03-13T12:00:00'); // Local Wed
+    const thursday  = new Date('2024-03-14T12:00:00'); // Local Thu
+    const friday    = new Date('2024-03-15T12:00:00'); // Local Fri
+
+    const overnightEvent = makeEvent({
+      start: { dateTime: '2024-03-13T22:00:00' }, // Wed 10 PM
+      end:   { dateTime: '2024-03-14T02:00:00' }, // Thu 2 AM
+    });
+
+    it('shows full range for same-day event', () => {
+      render(<EventCard event={makeEvent()} currentDay={wednesday} />);
+      // 9:00 AM - 9:30 AM (exact format depends on locale, but check for range)
+      const text = screen.getByText(/AM.*-.*AM/);
+      expect(text).toBeInTheDocument();
+      expect(text).not.toHaveTextContent('→');
+    });
+
+    it('shows start time with arrow on the first day of multiday event', () => {
+      render(<EventCard event={overnightEvent} currentDay={wednesday} />);
+      // Should show something like "10:00 PM →"
+      expect(screen.getByText(/10:00 PM\s*→/)).toBeInTheDocument();
+    });
+
+    it('shows arrow and end time on the last day of multiday event', () => {
+      render(<EventCard event={overnightEvent} currentDay={thursday} />);
+      // Should show something like "→ 2:00 AM"
+      expect(screen.getByText(/→\s*2:00 AM/)).toBeInTheDocument();
+    });
+
+    it('shows "All Day" for middle days of long multiday events', () => {
+      const longEvent = makeEvent({
+        start: { dateTime: '2024-03-13T10:00:00' }, // Wed
+        end:   { dateTime: '2024-03-15T15:00:00' }, // Fri
+      });
+      // Thursday is a middle day
+      render(<EventCard event={longEvent} currentDay={thursday} />);
+      expect(screen.getByText('All Day')).toBeInTheDocument();
+    });
+  });
+
   // ── Attendees ─────────────────────────────────────────────────────────────
 
   it('does not render the attendee row when there are no attendees', () => {
