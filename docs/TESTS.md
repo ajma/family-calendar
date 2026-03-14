@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 63 tests across 8 files.**
+**Total: 77 tests across 9 files.**
 
 To run:
 
@@ -182,8 +182,13 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### Presentation Mode
-- [x] **Event Sorting**: Verify that on a given day, all-day events are revealed before timed events.
-    - Setup: One all-day event "A" and one event "B" at 10:00 AM on Monday.
-    - Action: Enter presentation mode.
-    - Expected: Event "A" shows up first, then event "B".
+### `src/__tests__/KeyboardShortcuts.test.jsx`
+
+- **Week Navigation**: Verifies that `ArrowLeft` and `ArrowRight` trigger clicks on the previous and next week buttons respectively.
+- **Presentation Trigger**: Verifies that `Space` triggers the "Present" button click from the main view.
+- **Presentation Navigation**:
+    - `ArrowRight` or `Space` triggers the "Next" (>) button in presentation mode.
+    - `ArrowLeft` triggers the "Previous" (<) button in presentation mode.
+    - `Escape` triggers the "End" button click to exit presentation mode.
+- **Input Inhibition**: Confirms that global shortcuts are disabled when typing in any input field or within the Settings modal.
+- **Button Mapping**: Ensures that every keyboard shortcut literally triggers a `click()` on a DOM element for consistent behavior.

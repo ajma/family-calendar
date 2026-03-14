@@ -20,7 +20,7 @@ const RefreshIcon = () => (
   </svg>
 );
 
-const CalendarHeader = ({ currentDate, onPrev, onNext, onToday, onRefresh }) => {
+const CalendarHeader = ({ currentDate, onPrev, onNext, onToday, onRefresh, prevRef, nextRef }) => {
   // Compute start (Monday) and end (Sunday) of the week
   const dayOfWeek = currentDate.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -59,8 +59,8 @@ const CalendarHeader = ({ currentDate, onPrev, onNext, onToday, onRefresh }) => 
         </button>
       </div>
       <div className="nav-group glass">
-        <button onClick={onPrev} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
-        <button onClick={onNext} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>
+        <button ref={prevRef} onClick={onPrev} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
+        <button ref={nextRef} onClick={onNext} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>
       </div>
       <h2 className="current-month">{dateRangeStr}</h2>
     </div>

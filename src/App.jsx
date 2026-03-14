@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
@@ -21,6 +21,13 @@ function App() {
   const [sessionToken, setSessionToken] = useState(localStorage.getItem('session_token') || null);
   const [errorMSG, setErrorMSG] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Refs for keyboard navigation mapping
+  const prevWeekRef = useRef(null);
+  const nextWeekRef = useRef(null);
+  const presentBtnRef = useRef(null);
+  const presentationPrevRef = useRef(null);
+  const presentationNextRef = useRef(null);
 
   // Core Data Logic Hook
   const {
@@ -92,6 +99,42 @@ function App() {
     return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
   }, []);
 
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Inhibition Logic
+      const target = e.target;
+      const tagName = target.tagName ? target.tagName.toUpperCase() : '';
+      const isTyping = tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
+      if (isTyping) return;
+
+      if (presentationMode) {
+        // Presentation Mode Shortcuts
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          if (e.key === ' ') e.preventDefault();
+          presentationNextRef.current?.click();
+        } else if (e.key === 'ArrowLeft') {
+          presentationPrevRef.current?.click();
+        } else if (e.key === 'Escape') {
+          presentBtnRef.current?.click();
+        }
+      } else if (!isSettingsOpen) {
+        // Main View Shortcuts
+        if (e.key === 'ArrowLeft') {
+          prevWeekRef.current?.click();
+        } else if (e.key === 'ArrowRight') {
+          nextWeekRef.current?.click();
+        } else if (e.key === ' ') {
+          e.preventDefault();
+          presentBtnRef.current?.click();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [presentationMode, isSettingsOpen]);
+
   const handleFullReset = async () => {
     if (sessionToken) await resetSettings(sessionToken);
     setIsSettingsOpen(false);
@@ -118,6 +161,8 @@ function App() {
               onNext={handleNextWeek}
               onToday={handleToday}
               onRefresh={loadEvents}
+              prevRef={prevWeekRef}
+              nextRef={nextWeekRef}
             />
           )}
 
@@ -135,6 +180,7 @@ function App() {
 
             {sessionToken && (
               <button 
+                ref={presentBtnRef}
                 className={`control-btn glass ${presentationMode ? 'active-mode' : ''}`} 
                 style={{ marginRight: '1rem' }} 
                 onClick={togglePresentationMode}
@@ -204,6 +250,8 @@ function App() {
             revealedCount={revealedCount}
             onPrev={prevEvent}
             onNext={nextEvent}
+            prevRef={presentationPrevRef}
+            nextRef={presentationNextRef}
           />
         )}
 
