@@ -12,7 +12,7 @@ npm run test
 
 ---
 
-### `src/__tests__/PresentationMode.test.jsx`
+### `web/__tests__/PresentationMode.test.jsx`
 
 - **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
 - **Header Simplification**: Confirms that other buttons are hidden during presentation.
@@ -85,7 +85,7 @@ npm run test
 
 ## Frontend Tests
 
-### `src/utils/__tests__/eventEnrichment.test.js`
+### `web/utils/__tests__/eventEnrichment.test.js`
 
 Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
@@ -113,7 +113,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/components/__tests__/CalendarHeader.test.jsx`
+### `web/components/__tests__/CalendarHeader.test.jsx`
 
 - Renders correctly for a week within the same month.
 - Renders correctly across a month boundary.
@@ -122,7 +122,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/components/__tests__/SettingsModal.test.jsx`
+### `web/components/__tests__/SettingsModal.test.jsx`
 
 - **Vertical Navigation**: Verifies that user can switch between Calendars, Attendees, Account, and Debug tabs.
 - **Unsaved Changes Guard**: Confirms that trying to close (Escape/Cancel) after a change triggers a confirmation prompt.
@@ -150,7 +150,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/components/__tests__/WeekGrid.test.jsx`
+### `web/components/__tests__/WeekGrid.test.jsx`
 
 - Always renders exactly 7 day columns.
 - Week starts on Monday.
@@ -165,7 +165,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/components/__tests__/EventCard.test.jsx`
+### `web/components/__tests__/EventCard.test.jsx`
 
 - Renders the event summary.
 - Shows "Untitled Event" when summary is missing.
@@ -184,7 +184,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `src/__tests__/KeyboardShortcuts.test.jsx`
+### `web/__tests__/KeyboardShortcuts.test.jsx`
 
 - **Week Navigation**: Verifies that `ArrowLeft` and `ArrowRight` trigger clicks on the previous and next week buttons respectively.
 - **Presentation Trigger**: Verifies that `Space` triggers the "Present" button click from the main view.

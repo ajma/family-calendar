@@ -1,4 +1,4 @@
-import { GoogleCalendarEvent } from '../../src/types';
+import { GoogleCalendarEvent } from '../../common/types';
 
 /**
  * Logic for processing, deduplicating, and sorting Google Calendar events.

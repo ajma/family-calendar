@@ -1,7 +1,7 @@
 import express, { Response } from 'express';
 import { authenticateSession, AuthenticatedRequest } from '../middleware/auth';
 import { getUserSettings, saveUserSettings, clearAllUserSettings } from '../db';
-import { CalendarConfig, Person } from '../../src/types';
+import { CalendarConfig, Person } from '../../common/types';
 
 const router = express.Router();
 

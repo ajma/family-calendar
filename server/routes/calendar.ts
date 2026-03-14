@@ -3,7 +3,7 @@ import { authenticateSession, AuthenticatedRequest } from '../middleware/auth';
 import { getUserTokens, saveUserTokens, getUserSettings } from '../db';
 import { OAuth2Client } from 'google-auth-library';
 import { processEvents } from '../services/eventService';
-import { CalendarConfig, GoogleCalendarEvent } from '../../src/types';
+import { CalendarConfig, GoogleCalendarEvent } from '../../common/types';
 
 const router = express.Router();
 

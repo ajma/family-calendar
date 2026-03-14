@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { GoogleCalendarEvent, Calendar, CalendarConfig, Person } from '../types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
 const authHeader = (token: string) => ({ Authorization: `Bearer ${token}` });
 
@@ -35,7 +35,7 @@ export const exchangeCode = async (code: string): Promise<{ session_token: strin
 
 // ─── Google Calendar (proxied via backend) ────────────────────────────────────
 
-export const fetchCalendars = async (token: string): Promise<Calendar[]> =>
+export const fetchCalendars = async (token: string): Promise<GoogleCalendar[]> =>
     apiClient('/api/calendar/list', { headers: authHeader(token) });
 
 /**

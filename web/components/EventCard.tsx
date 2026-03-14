@@ -7,7 +7,7 @@ const formatTime = (isoString: string | undefined) => {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-import { GoogleCalendarEvent } from '../types';
+import { GoogleCalendarEvent } from 'common/types';
 
 interface EventCardProps {
   event: GoogleCalendarEvent;

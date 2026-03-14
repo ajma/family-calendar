@@ -18,8 +18,9 @@ Family Calendar is a premium web application that allows you to seamlessly unify
 
 ## Technology Stack
 
-- **Frontend:** React + Vite
-- **Backend:** Node.js + Express + `jsonwebtoken`
+- **Frontend:** React + Vite (in `web/`)
+- **Backend:** Node.js + Express + `jsonwebtoken` (in `server/`)
+- **Common:** Shared types (in `common/`)
 - **Database:** SQLite
 - **Styling:** Vanilla CSS
 - **Google API Integration:** `@react-oauth/google` (auth-code flow, server-side proxied)

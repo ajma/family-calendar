@@ -15,7 +15,7 @@ export const getAttendeeColor = (attendeeEmail: string): string => {
   return person ? person.color : 'var(--text-secondary)';
 };
 
-import { Person } from '../types';
+import { Person } from 'common/types';
 
 interface AttendeeAvatarProps {
   attendee: { email: string; displayName?: string };

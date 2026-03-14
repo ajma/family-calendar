@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 
 import { EmojiClickData, Theme } from 'emoji-picker-react';
-import { Calendar, CalendarConfig, Person } from '../types';
+import { GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
 interface CalendarSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  calendars: Calendar[];
+  calendars: GoogleCalendar[];
   calendarConfigs: Record<string, CalendarConfig>;
   people: Person[];
   onSave: (configs: Record<string, CalendarConfig>) => void;
@@ -112,7 +112,12 @@ const CalendarSelectorModal: React.FC<CalendarSelectorModalProps> = ({ isOpen, o
   };
 
   const handleSave = () => {
-    onSave(localConfigs);
+    const cleanedConfigs: Record<string, CalendarConfig> = {};
+    Object.entries(localConfigs).forEach(([id, config]) => {
+      const { summary, primary, ...rest } = config as any;
+      cleanedConfigs[id] = { ...rest, id } as CalendarConfig;
+    });
+    onSave(cleanedConfigs);
     onClose();
   };
 
@@ -124,7 +129,7 @@ const CalendarSelectorModal: React.FC<CalendarSelectorModalProps> = ({ isOpen, o
         <div style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
           <h2 style={{ padding: 0, border: 'none', margin: '0 0 0.5rem 0' }}>Select Calendars</h2>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.85rem' }}>
-            Choose which calendars to display and configure their hashtag filters or auto-attendee assignments.
+            Choose which calendars to display and configure their hashtag filters or auto-attendee assignment.
           </p>
         </div>
 

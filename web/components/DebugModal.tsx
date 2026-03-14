@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import { CalendarConfig, Person } from '../types';
+import { CalendarConfig, Person } from 'common/types';
 
 interface DebugModalProps {
   isOpen: boolean;

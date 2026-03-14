@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { encrypt, decrypt } from './crypto';
-import { CalendarConfig, Person } from '../src/types';
+import { CalendarConfig, Person } from '../common/types';
 import { UserSettings, StoredTokens } from './types';
 
 const __filename = fileURLToPath(import.meta.url);

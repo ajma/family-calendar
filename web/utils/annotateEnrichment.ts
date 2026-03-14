@@ -1,4 +1,4 @@
-import { Person, CalendarConfig, GoogleCalendarEvent, Attendee } from '../types';
+import { Person, CalendarConfig, GoogleCalendarEvent, Attendee } from 'common/types';
 
 /**
  * Pure utility functions for annotating and filtering calendar events.

@@ -9,7 +9,7 @@ import { usePresentationMode } from './hooks/usePresentationMode';
 import { useCalendarData } from './hooks/useCalendarData';
 import { exchangeCode, resetSettings } from './services/backend';
 import { filterHiddenAttendees } from './utils/annotateEnrichment';
-import { GoogleCalendarEvent, Calendar, CalendarConfig, Person } from './types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
 // Modular Styles
 import './index.css';
@@ -60,11 +60,12 @@ function App() {
     handleToday,
     loadEvents,
     handleSaveAttendees,
-    handleSaveCalendars
+    handleSaveCalendars,
+    persistSettings
   }: {
     currentDate: Date;
     events: GoogleCalendarEvent[];
-    calendars: Calendar[];
+    calendars: GoogleCalendar[];
     calendarConfigs: Record<string, CalendarConfig>;
     peopleDB: Person[];
     loading: boolean;
@@ -74,9 +75,10 @@ function App() {
     handlePrevWeek: () => void;
     handleNextWeek: () => void;
     handleToday: () => void;
-    loadEvents: () => Promise<void>;
+    loadEvents: (configs?: Record<string, CalendarConfig>, people?: Person[]) => Promise<void>;
     handleSaveAttendees: (people: Person[]) => Promise<void>;
     handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
+    persistSettings: (configs: Record<string, CalendarConfig>, people: Person[]) => Promise<void>;
   } = useCalendarData(sessionToken);
 
   // Presentation Mode Logic Hook
@@ -183,10 +185,15 @@ function App() {
   const handleSettingsSave = async (newConfigs: CalendarConfig[], newPeople: Person[]) => {
     // Convert array to record for handleSaveCalendars
     const configRecord: Record<string, CalendarConfig> = {};
-    newConfigs.forEach(c => { if (c.id) configRecord[c.id] = c; });
+    newConfigs.forEach(c => { 
+      if (c.id) {
+        const { summary, primary, ...rest } = c as any;
+        configRecord[c.id] = rest as CalendarConfig;
+      } 
+    });
     
-    await handleSaveCalendars(configRecord);
-    await handleSaveAttendees(newPeople);
+    await persistSettings(configRecord, newPeople);
+    await loadEvents(configRecord, newPeople);
     setView(VIEWS.MAIN);
   };
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import EventCard from './EventCard';
 
-import { GoogleCalendarEvent } from '../types';
+import { GoogleCalendarEvent } from 'common/types';
 
 interface DayColumnProps {
   date: Date;

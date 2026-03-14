@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { AVATAR_ICON_COLORS } from '../constants';
-import { GoogleCalendarEvent, Calendar, CalendarConfig, Person } from '../types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
 interface LocalPerson extends Person {
   _id: string;
@@ -11,7 +11,7 @@ interface LocalPerson extends Person {
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  calendars: Calendar[];
+  calendars: GoogleCalendar[];
   calendarConfigs: Record<string, CalendarConfig>;
   people: Person[];
   userEmail: string;
@@ -154,10 +154,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSaveAll = () => {
     const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
-    const configsToSave = Object.entries(localConfigs).map(([id, config]) => ({
-      ...config,
-      id
-    }));
+    const configsToSave = Object.entries(localConfigs).map(([id, config]) => {
+      const { summary, primary, ...rest } = config as any; 
+      return { ...rest, id } as CalendarConfig;
+    });
     onSave(configsToSave, peopleToSave);
     onClose();
   };
@@ -303,7 +303,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <>
                 <div className="settings-section-title">Calendar Subscriptions</div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                  Choose which calendars to display and configure their hashtag filters or auto-attendee assignments.
+                  Choose which calendars to display and configure their hashtag filters or auto-attendee assignment.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {calendars.map(cal => {

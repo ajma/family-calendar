@@ -1,7 +1,7 @@
 import React from 'react';
 import DayColumn from './DayColumn';
 
-import { GoogleCalendarEvent } from '../types';
+import { GoogleCalendarEvent } from 'common/types';
 
 interface WeekGridProps {
   currentDate: Date;

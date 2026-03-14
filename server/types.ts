@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { CalendarConfig, Person } from '../src/types';
+import { CalendarConfig, Person } from '../common/types';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

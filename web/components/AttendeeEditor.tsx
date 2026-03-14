@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AVATAR_ICON_COLORS } from '../constants';
-import { Person } from '../types';
+import { Person } from 'common/types';
 
 interface LocalPerson extends Person {
   _id: string;

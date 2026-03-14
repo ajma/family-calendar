@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
 import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
-import { GoogleCalendarEvent, Calendar, CalendarConfig, Person } from '../types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
 export function useCalendarData(sessionToken: string | null) {
   const [currentDate, setCurrentDate] = useState<Date>(() => {
@@ -10,7 +10,7 @@ export function useCalendarData(sessionToken: string | null) {
     return savedDate ? new Date(savedDate) : new Date();
   });
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
-  const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
   const [calendarConfigs, setCalendarConfigs] = useState<Record<string, CalendarConfig>>(() => {
     try {
       const saved = localStorage.getItem('calendar_configs');
@@ -42,18 +42,26 @@ export function useCalendarData(sessionToken: string | null) {
         const email = settings.email || '';
         setUserEmail(email);
         localStorage.setItem('user_email', email);
-        if (settings.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0) {
-          setCalendarConfigs(settings.calendarConfigs);
-          localStorage.setItem('calendar_configs', JSON.stringify(settings.calendarConfigs));
+        
+        const finalConfigs = settings.calendarConfigs || {};
+        const finalPeople = settings.people || [];
+
+        if (Object.keys(finalConfigs).length > 0) {
+          setCalendarConfigs(finalConfigs);
+          localStorage.setItem('calendar_configs', JSON.stringify(finalConfigs));
         }
-        if (settings.people && settings.people.length > 0) {
-          setPeopleDB(settings.people);
-          localStorage.setItem('people', JSON.stringify(settings.people));
+        if (finalPeople.length > 0) {
+          setPeopleDB(finalPeople);
+          localStorage.setItem('people', JSON.stringify(finalPeople));
         }
+        
+        // Mark as loaded before calling other effects
         setSettingsLoaded(true);
+        
+        // Pass fresh data into initial loads to avoid race with local state
+        loadEvents(finalConfigs, finalPeople);
       } catch (e) {
         console.error('Failed to load settings from DB', e);
-        // Set to true even on error so we don't hang discovery forever
         setSettingsLoaded(true);
       }
     };
@@ -63,13 +71,18 @@ export function useCalendarData(sessionToken: string | null) {
   const persistSettings = async (configs: Record<string, CalendarConfig>, people: Person[]) => {
     localStorage.setItem('calendar_configs', JSON.stringify(configs));
     localStorage.setItem('people', JSON.stringify(people));
+    
+    // Update local state immediately so UI refreshes correctly
+    setCalendarConfigs(configs);
+    setPeopleDB(people);
+
     if (sessionToken) {
       await saveSettings(sessionToken, configs, people);
     }
   };
 
   const loadCalendars = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken || !settingsLoaded) return;
     try {
       const data = await fetchCalendars(sessionToken);
       setCalendars(data);
@@ -83,7 +96,10 @@ export function useCalendarData(sessionToken: string | null) {
               ...prev,
               [primaryCal.id]: { ...prev[primaryCal.id], selected: true }
             };
-            persistSettings(newConfigs, peopleDB).catch(e => console.error(e));
+            // Note: We update local state, but we don't automatically persist to server 
+            // during this "discovery" phase to avoid overwriting legitimate DB state 
+            // if loadUserData is still finishing its state updates.
+            localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
             return newConfigs;
           }
           return prev;
@@ -94,8 +110,11 @@ export function useCalendarData(sessionToken: string | null) {
     }
   };
 
-  const loadEvents = async () => {
-    if (!sessionToken) return;
+  const loadEvents = async (configsOverride?: Record<string, CalendarConfig>, peopleOverride?: Person[]) => {
+    if (!sessionToken || !settingsLoaded) return;
+    const currentConfigs = configsOverride || calendarConfigs;
+    const currentPeople = peopleOverride || peopleDB;
+
     setLoading(true);
     setErrorMSG(null);
     try {
@@ -110,41 +129,38 @@ export function useCalendarData(sessionToken: string | null) {
       endOfWeek.setHours(23, 59, 59, 999);
 
       let eventsData = await fetchEvents(sessionToken, startOfWeek.toISOString(), endOfWeek.toISOString());
-      eventsData = annotateEvents(eventsData, calendarConfigs, peopleDB);
+      eventsData = annotateEvents(eventsData, currentConfigs, currentPeople);
       setEvents(eventsData);
 
       // Discover new people from attendees
-      // Only run after settings are loaded to avoid recreating people that already exist in DB
-      if (settingsLoaded) {
-        const emailMap = buildEmailMap(peopleDB);
-        let discoveredNew = false;
-        const newPeopleList = [...peopleDB];
+      const emailMap = buildEmailMap(currentPeople);
+      let discoveredNew = false;
+      const newPeopleList = [...currentPeople];
 
-        eventsData.forEach(event => {
-          if (event.attendees) {
-            event.attendees.forEach(attendee => {
-              if (attendee.email && !emailMap.has(attendee.email.toLowerCase())) {
-                discoveredNew = true;
-                const name = attendee.displayName || attendee.email;
-                const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                const usedColors = newPeopleList.map(p => p.color);
-                let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
-                if (!newColor) {
-                  newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-                }
-                const newPerson = { name, initials, email: attendee.email, color: newColor, show: true };
-                newPeopleList.push(newPerson);
-                // Also add to map immediately to avoid duplicating within the same loop
-                emailMap.set(attendee.email.toLowerCase(), newPerson);
+      eventsData.forEach(event => {
+        if (event.attendees) {
+          event.attendees.forEach(attendee => {
+            if (attendee.email && !emailMap.has(attendee.email.toLowerCase())) {
+              discoveredNew = true;
+              const name = attendee.displayName || attendee.email;
+              const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              const usedColors = newPeopleList.map(p => p.color);
+              let newColor = AVATAR_ICON_COLORS.find(c => !usedColors.includes(c));
+              if (!newColor) {
+                newColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
               }
-            });
-          }
-        });
-
-        if (discoveredNew) {
-          setPeopleDB(newPeopleList);
-          persistSettings(calendarConfigs, newPeopleList).catch(e => console.error('discoveringPeopleError', e));
+              const newPerson = { name, initials, email: attendee.email, color: newColor, show: true };
+              newPeopleList.push(newPerson);
+              // Also add to map immediately to avoid duplicating within the same loop
+              emailMap.set(attendee.email.toLowerCase(), newPerson);
+            }
+          });
         }
+      });
+
+      if (discoveredNew) {
+        setPeopleDB(newPeopleList);
+        persistSettings(currentConfigs, newPeopleList).catch(e => console.error('discoveringPeopleError', e));
       }
     } catch (error: unknown) {
       console.error('Failed to load events', error);
@@ -155,16 +171,16 @@ export function useCalendarData(sessionToken: string | null) {
   };
 
   useEffect(() => {
-    if (sessionToken) {
+    if (sessionToken && settingsLoaded) {
       loadCalendars();
     }
-  }, [sessionToken]);
+  }, [sessionToken, settingsLoaded]);
 
   useEffect(() => {
-    if (sessionToken) {
+    if (sessionToken && settingsLoaded) {
       loadEvents();
     }
-  }, [currentDate, sessionToken, calendarConfigs]);
+  }, [currentDate, sessionToken, calendarConfigs, settingsLoaded]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
@@ -187,13 +203,13 @@ export function useCalendarData(sessionToken: string | null) {
   };
 
   const handleSaveAttendees = async (updatedPeople: Person[]) => {
-    setPeopleDB(updatedPeople);
     await persistSettings(calendarConfigs, updatedPeople);
+    await loadEvents(calendarConfigs, updatedPeople);
   };
 
   const handleSaveCalendars = async (newConfigs: Record<string, CalendarConfig>) => {
-    setCalendarConfigs(newConfigs);
     await persistSettings(newConfigs, peopleDB);
+    await loadEvents(newConfigs, peopleDB);
   };
 
   return {
@@ -211,6 +227,7 @@ export function useCalendarData(sessionToken: string | null) {
     handleToday,
     loadEvents,
     handleSaveAttendees,
-    handleSaveCalendars
+    handleSaveCalendars,
+    persistSettings
   };
 }

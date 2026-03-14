@@ -17,9 +17,10 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["web/*"],
+      "common/*": ["common/*"]
     }
   },
-  "include": ["src", "server", "tests", "vitest.config.ts", "vite.config.ts"],
+  "include": ["web", "common", "server", "tests", "vitest.config.ts", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

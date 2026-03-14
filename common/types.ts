@@ -4,6 +4,14 @@ export interface Attendee {
   responseStatus?: string;
 }
 
+export interface GoogleCalendar {
+  id: string;
+  summary: string;
+  primary?: boolean;
+  accessRole: string;
+  summaryOverride?: string;
+}
+
 export interface GoogleCalendarEvent {
   id: string;
   summary: string;
@@ -26,13 +34,10 @@ export interface GoogleCalendarEvent {
 }
 
 export interface CalendarConfig {
-  id?: string;
-  summary?: string;
-  primary?: boolean;
+  id: string;
   selected?: boolean;
   emoji?: string | null;
   hashtag?: string;
-  assignments?: string[];
   assignment?: string;
 }
 
@@ -46,12 +51,4 @@ export interface Person {
   avatar?: string;
   hidden?: boolean;
   alternateEmails?: string[];
-}
-
-export interface Calendar {
-  id: string;
-  summary: string;
-  primary?: boolean;
-  accessRole: string;
-  summaryOverride?: string;
 }
