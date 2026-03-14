@@ -1,0 +1,40 @@
+import React from 'react';
+
+/**
+ * Component for the floating presentation controls.
+ */
+interface PresentationControlsProps {
+  revealedCount: number;
+  onNext: () => void;
+  onPrev: () => void;
+  prevRef: React.RefObject<HTMLButtonElement | null>;
+  nextRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+const PresentationControls: React.FC<PresentationControlsProps> = ({ revealedCount, onPrev, onNext, prevRef, nextRef }) => {
+
+  return (
+    <div className="presentation-controls">
+      <div className="presentation-nav-group">
+        <button 
+          ref={prevRef}
+          className="presentation-btn prev" 
+          onClick={onPrev}
+          title="Previous (Left Arrow)"
+        >
+          &lt;
+        </button>
+        <button 
+          ref={nextRef}
+          className="presentation-btn next" 
+          onClick={onNext}
+          title="Next (Right Arrow)"
+        >
+          &gt;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default PresentationControls;

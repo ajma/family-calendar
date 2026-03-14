@@ -1,0 +1,133 @@
+import { Person, CalendarConfig, GoogleCalendarEvent, Attendee } from '../types';
+
+/**
+ * Pure utility functions for annotating and filtering calendar events.
+ * Extracted from App.tsx to make the logic independently testable.
+ */
+
+/**
+ * Builds a lookup map from any email (primary or alternate) to a person record.
+ */
+export function buildEmailMap(people: Person[]): Map<string, Person> {
+  const map = new Map<string, Person>();
+  people.forEach((person: Person) => {
+    if (person.email) map.set(person.email.toLowerCase(), person);
+    (person.alternateEmails || []).forEach((ae: string) => {
+      if (ae) map.set(ae.toLowerCase(), person);
+    });
+  });
+  return map;
+}
+
+/**
+ * Rewrites each attendee's email to the primary email of the matched person,
+ * then deduplicates attendees (keeping the first occurrence of each primary email).
+ */
+export function normalizeAttendees(attendees: Attendee[] | undefined, emailMap: Map<string, Person>): Attendee[] | undefined {
+  if (!attendees) return attendees;
+  const seen = new Set<string>();
+  const result: Attendee[] = [];
+  for (const att of attendees) {
+    const person = att.email ? emailMap.get(att.email.toLowerCase()) : null;
+    const resolvedEmail = person ? person.email : att.email;
+    
+    if (resolvedEmail && seen.has(resolvedEmail.toLowerCase())) continue; // dedup
+    if (resolvedEmail) seen.add(resolvedEmail.toLowerCase());
+    
+    if (person) {
+      result.push({
+        ...att,
+        email: person.email,
+        displayName: person.name || person.email
+      });
+    } else {
+      result.push(att);
+    }
+  }
+  return result;
+}
+
+/**
+ * Annotates a list of raw events from the Google Calendar API by:
+ *  - Prepending the calendar emoji to each event's summary
+ *  - Auto-assigning the calendar's configured person as an attendee
+ *  - Adding all people as attendees for events tagged with #allfamily
+ */
+export function annotateEvents(events: GoogleCalendarEvent[], calendarConfigs: Record<string, CalendarConfig>, people: Person[]): GoogleCalendarEvent[] {
+  const emailMap = buildEmailMap(people);
+  return events.map((event: GoogleCalendarEvent) => {
+    const config = calendarConfigs[event._calendarId || ''] || {};
+    const assignedEmail = config.assignment;
+    const calendarEmoji = config.emoji;
+
+    let updatedEvent = { ...event };
+
+    // Normalize and deduplicate attendees using alternateEmails
+    if (updatedEvent.attendees) {
+      updatedEvent.attendees = normalizeAttendees(updatedEvent.attendees, emailMap);
+    }
+
+    // Prepend emoji to event title
+    if (calendarEmoji && updatedEvent.summary) {
+      updatedEvent.summary = `${calendarEmoji} ${updatedEvent.summary}`;
+    }
+
+    // Auto-assign the calendar's designated person as an attendee
+    if (assignedEmail) {
+      const person = emailMap.get(assignedEmail.toLowerCase());
+      const attendees: Attendee[] = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
+      if (person && !attendees.some(a => a.email && a.email.toLowerCase() === person.email.toLowerCase())) {
+        attendees.push({
+          email: person.email,
+          displayName: person.name || person.email,
+          responseStatus: 'accepted',
+        });
+        updatedEvent.attendees = attendees;
+      }
+    }
+
+    // Add every known person as an attendee for #allfamily events
+    if (updatedEvent.description && updatedEvent.description.toLowerCase().includes('#allfamily')) {
+      const attendees: Attendee[] = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
+      let attendeesModified = false;
+
+      people.forEach((person: Person) => {
+        if (!attendees.some(a => a.email && a.email.toLowerCase() === person.email.toLowerCase())) {
+          attendees.push({
+            email: person.email,
+            displayName: person.name || person.email,
+            responseStatus: 'accepted',
+          });
+          attendeesModified = true;
+        }
+      });
+
+      if (attendeesModified) {
+        updatedEvent.attendees = attendees;
+      }
+    }
+
+    return updatedEvent;
+  });
+}
+
+/**
+ * Filters attendees whose `show` flag is explicitly set to false.
+ */
+export function filterHiddenAttendees(events: GoogleCalendarEvent[], people: Person[]): GoogleCalendarEvent[] {
+  const emailMap = buildEmailMap(people);
+  return events.map((event: GoogleCalendarEvent) => {
+    if (!event.attendees) return event;
+    
+    // First, filter out hidden people
+    const filteredAttendees = event.attendees.filter((att: Attendee) => {
+      const person = att.email ? emailMap.get(att.email.toLowerCase()) : null;
+      return !(person && person.show === false);
+    });
+
+    // Then, re-normalize and deduplicate in case people were recently merged/changed
+    const normalizedAttendees = normalizeAttendees(filteredAttendees, emailMap);
+    
+    return { ...event, attendees: normalizedAttendees };
+  });
+}
