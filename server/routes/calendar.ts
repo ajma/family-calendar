@@ -27,6 +27,14 @@ async function getFreshAccessToken(userId: string): Promise<string | null | unde
         err.status = 401;
         throw err;
     }
+
+    // Optimization: Check if current token is still valid (with 5-minute buffer)
+    const now = Date.now();
+    const buffer = 5 * 60 * 1000; 
+    if (stored.accessToken && stored.tokenExpiry && (stored.tokenExpiry - now > buffer)) {
+        return stored.accessToken;
+    }
+
     oauth2Client.setCredentials({ refresh_token: stored.refreshToken });
     const { credentials } = await oauth2Client.refreshAccessToken();
     await saveUserTokens(userId, credentials.access_token || null, null, credentials.expiry_date || null);

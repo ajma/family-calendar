@@ -72,6 +72,11 @@ npm run test
 - **Round-trip**: Saving settings then re-fetching (simulating a fresh login with the same identity) returns the data intact — including nested calendar config fields and all people records.
 - **User isolation**: Settings saved by one user are not visible to a different user.
 
+#### Token Refresh Optimization
+
+- **Cached Token**: Does NOT call Google to refresh if the stored token is still valid (based on `token_expiry` with a 5-minute buffer).
+- **Auto-Refresh**: Successfully calls Google to refresh and updates the database if the current token is expired.
+
 ---
 
 ### `server/__tests__/crypto.test.js`
