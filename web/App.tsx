@@ -289,11 +289,11 @@ function App() {
                   return dayA.localeCompare(dayB);
                 }
 
-                // Same day: Timed events first, then all-day
-                const isAllDayA = !a.start.dateTime;
-                const isAllDayB = !b.start.dateTime;
+                // Same day: all-day events first
+                const isAllDayA = !!a.start.date;
+                const isAllDayB = !!b.start.date;
                 if (isAllDayA !== isAllDayB) {
-                  return isAllDayA ? 1 : -1;
+                  return isAllDayA ? -1 : 1;
                 }
 
                 // Tie-breaker: chronological order

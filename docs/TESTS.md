@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 80 tests across 9 files.**
+**Total: 84 tests across 11 files.**
 
 To run:
 
@@ -17,7 +17,7 @@ npm run test
 - **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
 - **Header Simplification**: Confirms that other buttons are hidden during presentation.
 - **Keyboard Navigation**: Verifies that Arrow keys and Escape key function correctly.
-- **Sorting Logic**: Ensures timed events are revealed before all-day events on the same day.
+- **Sorting Logic**: Ensures all-day events are revealed before timed events on the same day.
 - **Exit Logic**: Ensures all UI elements reappear after exiting.
 
 ---
@@ -162,6 +162,14 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - **Midnight Spanning**: Verifies that a timed event spanning midnight (e.g. 10 PM to 2 AM) appears in both columns.
 - Ignores events that fall outside the current week.
 - Correctly calculates the week when the current day is Sunday (edge case).
+- **Sorting Logic**: Ensures all-day events appear at the top of the day.
+
+---
+
+### `web/components/__tests__/DayColumn.test.tsx`
+
+- **Visual Sorting**: Verifies that all-day events are rendered before (at the top of) timed events within the same day.
+- **Chronological Order**: Verifies that timed events are sorted by start time after any all-day events.
 
 ---
 
