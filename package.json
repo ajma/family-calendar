@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "prepare": "husky || exit 0"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
@@ -46,6 +47,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
