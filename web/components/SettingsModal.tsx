@@ -46,6 +46,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isResetConfirming, setIsResetConfirming] = useState<boolean>(false);
   const [resetConfirmationText, setResetConfirmationText] = useState<string>('');
   const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<string | null>(null);
   
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +71,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setResetConfirmationText('');
       if (initialTab) setActiveTab(initialTab);
     }
-  }, [isOpen, calendarConfigs, people, initialTab]);
+  }, [isOpen]);
 
   // Track dirty state
   useEffect(() => {
@@ -84,11 +85,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const initialConfigs = JSON.stringify(calendarConfigs);
     const initialPeople = normalizePeople(people);
+    const initialDebugText = JSON.stringify({ calendar_configs: calendarConfigs, people }, null, 2);
     
     const currentConfigs = JSON.stringify(localConfigs);
     const currentPeople = normalizePeople(localPeople);
     
-    setIsDirty(initialConfigs !== currentConfigs || initialPeople !== currentPeople);
+    const isDataDirty = initialConfigs !== currentConfigs || initialPeople !== currentPeople;
+    const isDebugDirty = activeTab === 'debug' && localDebugText !== initialDebugText;
+    
+    setIsDirty(isDataDirty || isDebugDirty);
 
     // Sync debug text from UI state (if not currently focused on debug tab)
     if (activeTab !== 'debug') {
@@ -97,7 +102,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         people: localPeople.map(({ _id, ...rest }) => rest) 
       }, null, 2));
     }
-  }, [localConfigs, localPeople, calendarConfigs, people, isOpen, activeTab]);
+  }, [localConfigs, localPeople, calendarConfigs, people, isOpen, activeTab, localDebugText]);
 
   const handleDebugTextChange = (newText: string) => {
     setLocalDebugText(newText);
@@ -113,7 +118,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         setLocalPeople(withIds);
       }
     } catch (e) {
-      // Invalid JSON, just keep the text as is
+      // Invalid JSON, just keep the text as is. isDirty will still flag it because localDebugText changed.
     }
   };
 
@@ -147,13 +152,91 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleCloseRequest = () => {
     if (isDirty) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-        onClose();
-      }
+      setPendingTabSwitch('__CLOSE__');
     } else {
       onClose();
     }
   };
+
+  const handleTabChange = (newTab: string) => {
+    if (newTab === activeTab) return;
+    if (isDirty) {
+      setPendingTabSwitch(newTab);
+      return;
+    }
+    setActiveTab(newTab);
+  };
+
+  const handleDiscardAndSwitch = () => {
+    if (pendingTabSwitch) {
+      if (pendingTabSwitch === '__CLOSE__') {
+        onClose();
+      } else {
+        // Reset local state to match props
+        setLocalConfigs(JSON.parse(JSON.stringify(calendarConfigs)));
+        const sortedPeople = [...people].sort((a, b) => {
+          const nameA = a.name || a.email || '';
+          const nameB = b.name || b.email || '';
+          return nameA.localeCompare(nameB);
+        }).map(p => ({ ...p, _id: p.email + Math.random() }));
+        setLocalPeople(sortedPeople);
+        setIsDirty(false);
+        setActiveTab(pendingTabSwitch);
+      }
+      setPendingTabSwitch(null);
+    }
+  };
+
+  const handleSaveAndSwitch = () => {
+    if (pendingTabSwitch) {
+      const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
+      const configsToSave = Object.entries(localConfigs).map(([id, config]) => {
+        const { summary, primary, ...rest } = config as any; 
+        return { ...rest, id } as CalendarConfig;
+      });
+      onSave(configsToSave, peopleToSave);
+      
+      if (pendingTabSwitch === '__CLOSE__') {
+        onClose();
+      } else {
+        setActiveTab(pendingTabSwitch);
+      }
+      setPendingTabSwitch(null);
+    }
+  };
+
+  const renderGuard = () => {
+    if (!pendingTabSwitch) return null;
+    const isClosing = pendingTabSwitch === '__CLOSE__';
+    const actionLabel = isClosing ? 'Exit' : 'Switch';
+    
+    return (
+      <div className="tab-guard-overlay">
+        <div className="tab-guard-dialog animate-in">
+          <h3>Unsaved Changes</h3>
+          <p>You have unsaved changes in the <strong>{activeTab}</strong> tab. What would you like to do before {isClosing ? 'exiting' : 'switching'}?</p>
+          <div className="tab-guard-actions">
+            <button onClick={handleDiscardAndSwitch} className="btn-secondary" style={{ color: '#ff7b72', borderColor: '#ff7b72' }}>Discard & {actionLabel}</button>
+            <button onClick={handleSaveAndSwitch} className="btn-primary">Save & {actionLabel}</button>
+            <button onClick={() => setPendingTabSwitch(null)} className="btn-secondary">Keep Editing</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStickyActions = () => (
+    <div className="tab-actions-sticky">
+      <button 
+        onClick={handleSaveAll} 
+        className="btn-primary" 
+        disabled={!isDirty}
+        style={{ opacity: isDirty ? 1 : 0.5, cursor: isDirty ? 'pointer' : 'not-allowed', padding: '0.6rem 1.5rem' }}
+      >
+        Save
+      </button>
+    </div>
+  );
 
   const handleSaveAll = () => {
     const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
@@ -162,7 +245,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       return { ...rest, id } as CalendarConfig;
     });
     onSave(configsToSave, peopleToSave);
-    onClose();
   };
 
   // Calendar Handlers
@@ -294,17 +376,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="settings-layout">
           {/* Sidebar */}
           <div className="settings-sidebar">
-            <button className={`settings-tab-btn ${activeTab === 'calendars' ? 'active' : ''}`} onClick={() => setActiveTab('calendars')}>📅 Calendars</button>
-            <button className={`settings-tab-btn ${activeTab === 'attendees' ? 'active' : ''}`} onClick={() => setActiveTab('attendees')}>👥 Attendees</button>
-            <button className={`settings-tab-btn ${activeTab === 'guide' ? 'active' : ''}`} onClick={() => setActiveTab('guide')}>❓ User Guide</button>
-            <button className={`settings-tab-btn ${activeTab === 'account' ? 'active' : ''}`} onClick={() => setActiveTab('account')}>👤 Account</button>
-            {isAdmin && <button className={`settings-tab-btn ${activeTab === 'debug' ? 'active' : ''}`} onClick={() => setActiveTab('debug')}>🐛 Debug</button>}
+            <button className={`settings-tab-btn ${activeTab === 'calendars' ? 'active' : ''}`} onClick={() => handleTabChange('calendars')}>📅 Calendars</button>
+            <button className={`settings-tab-btn ${activeTab === 'attendees' ? 'active' : ''}`} onClick={() => handleTabChange('attendees')}>👥 Attendees</button>
+            <button className={`settings-tab-btn ${activeTab === 'guide' ? 'active' : ''}`} onClick={() => handleTabChange('guide')}>❓ User Guide</button>
+            <button className={`settings-tab-btn ${activeTab === 'account' ? 'active' : ''}`} onClick={() => handleTabChange('account')}>👤 Account</button>
+            {isAdmin && <button className={`settings-tab-btn ${activeTab === 'debug' ? 'active' : ''}`} onClick={() => handleTabChange('debug')}>🐛 Debug</button>}
+            
+            <button 
+              className="settings-tab-btn" 
+              onClick={handleCloseRequest}
+              style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', borderRadius: 0, padding: '1rem 1.25rem' }}
+            >
+              🚪 Exit
+            </button>
           </div>
 
           {/* Content area */}
           <div className="settings-content-area">
+            {renderGuard()}
             {activeTab === 'calendars' && (
-              <>
+              <div className="settings-tab-content">
                 <div className="settings-section-title">Calendar Subscriptions</div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
                   Choose which calendars to display and configure their hashtag filters or auto-attendee assignment.
@@ -376,11 +467,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     );
                   })}
                 </div>
-              </>
+                {renderStickyActions()}
+              </div>
             )}
 
             {activeTab === 'attendees' && (
-              <>
+              <div className="settings-tab-content">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <div className="settings-section-title" style={{ margin: 0 }}>Attendee Management</div>
                   <button onClick={handleAddPerson} className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>+ Add New Person</button>
@@ -452,79 +544,82 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   ))}
                 </div>
-              </>
+                {renderStickyActions()}
+              </div>
             )}
 
             {activeTab === 'account' && (
-              <>
+              <div className="settings-tab-content">
                 <div className="settings-section-title">Account Settings</div>
                 <div className="settings-account-info">
                   <div>Logged in as: <span className="settings-account-email">{userEmail}</span></div>
                   <button onClick={onLogout} className="btn-secondary" style={{ alignSelf: 'flex-start', color: '#ff7b72', borderColor: '#ff7b72' }}>Sign Out</button>
                 </div>
-              </>
+              </div>
             )}
 
             {activeTab === 'guide' && (
-              <div className="custom-scrollbar" style={{ height: '100%', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                <div className="settings-section-title">User Guide</div>
-                
-                <section style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ marginTop: 0, color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>📅 Calendar Configuration</h3>
-                  <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>From the <strong>Calendars</strong> tab, you can customize your experience:</p>
-                  <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
-                    <li><strong>Subscriptions</strong>: Toggle which Google Calendars appear in your view.</li>
-                    <li><strong>Auto-Assign</strong>: Link a calendar to a specific person. Any event on that calendar will automatically show that person's avatar.</li>
-                    <li><strong>Hashtags</strong>: Filter a calendar to only show events containing a specific tag (e.g., <code>#work</code>).</li>
-                    <li><strong>Emojis</strong>: Prepend a custom emoji to every event title from a specific calendar.</li>
-                  </ul>
-                </section>
+              <div className="settings-tab-content">
+                <div className="custom-scrollbar" style={{ height: '100%', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                  <div className="settings-section-title">User Guide</div>
+                  
+                  <section style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ marginTop: 0, color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>📅 Calendar Configuration</h3>
+                    <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>From the <strong>Calendars</strong> tab, you can customize your experience:</p>
+                    <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
+                      <li><strong>Subscriptions</strong>: Toggle which Google Calendars appear in your view.</li>
+                      <li><strong>Auto-Assign</strong>: Link a calendar to a specific person. Any event on that calendar will automatically show that person's avatar.</li>
+                      <li><strong>Hashtags</strong>: Filter a calendar to only show events containing a specific tag (e.g., <code>#work</code>).</li>
+                      <li><strong>Emojis</strong>: Prepend a custom emoji to every event title from a specific calendar.</li>
+                    </ul>
+                  </section>
 
-                <section style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>🏷️ Event Hashtags</h3>
-                  <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>Use these special tags in your Google Calendar event descriptions:</p>
-                  <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
-                    <li><code>#allfamily</code>: Automatically adds every person in your attendee list to the event.</li>
-                    <li><code>#ignore</code>: Completely hides the event from this application.</li>
-                  </ul>
-                </section>
+                  <section style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>🏷️ Event Hashtags</h3>
+                    <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>Use these special tags in your Google Calendar event descriptions:</p>
+                    <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
+                      <li><code>#allfamily</code>: Automatically adds every person in your attendee list to the event.</li>
+                      <li><code>#ignore</code>: Completely hides the event from this application.</li>
+                    </ul>
+                  </section>
 
-                <section style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>👥 People Management</h3>
-                  <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>Keep your attendee list clean and consistent from the <strong>Attendees</strong> tab:</p>
-                  <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
-                    <li><strong>Merging</strong>: Consolidate multiple email addresses under one primary identity.</li>
-                    <li><strong>Unmerging</strong>: Split an alternate email back into a standalone person.</li>
-                    <li><strong>Visuals</strong>: Customize names, initials, and colors for better recognition.</li>
-                  </ul>
-                </section>
+                  <section style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>👥 People Management</h3>
+                    <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>Keep your attendee list clean and consistent from the <strong>Attendees</strong> tab:</p>
+                    <ul style={{ paddingLeft: '1.2rem', lineHeight: '1.5', fontSize: '0.85rem', margin: 0 }}>
+                      <li><strong>Merging</strong>: Consolidate multiple email addresses under one primary identity.</li>
+                      <li><strong>Unmerging</strong>: Split an alternate email back into a standalone person.</li>
+                      <li><strong>Visuals</strong>: Customize names, initials, and colors for better recognition.</li>
+                    </ul>
+                  </section>
 
-                <section>
-                  <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>⌨️ Keyboard Shortcuts</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: '8px' }}>
-                    <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Main View</div>
-                      <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.8rem' }}>
-                        <li><code>Space</code>: Start Presentation</li>
-                        <li><code>ArrowLeft/Right</code>: Navigate</li>
-                        <li><code>?</code>: Open this Guide</li>
-                      </ul>
+                  <section>
+                    <h3 style={{ color: 'var(--accent-blue)', fontSize: '1rem', marginBottom: '0.5rem' }}>⌨️ Keyboard Shortcuts</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: '8px' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Main View</div>
+                        <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.8rem' }}>
+                          <li><code>Space</code>: Start Presentation</li>
+                          <li><code>ArrowLeft/Right</code>: Navigate</li>
+                          <li><code>?</code>: Open this Guide</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Show Mode</div>
+                        <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.8rem' }}>
+                          <li><code>Right/Space</code>: Next Event</li>
+                          <li><code>Left</code>: Previous Event</li>
+                          <li><code>Escape</code>: Exit Mode</li>
+                        </ul>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Show Mode</div>
-                      <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.8rem' }}>
-                        <li><code>Right/Space</code>: Next Event</li>
-                        <li><code>Left</code>: Previous Event</li>
-                        <li><code>Escape</code>: Exit Mode</li>
-                      </ul>
-                    </div>
-                  </div>
-                </section>
+                  </section>
+                </div>
               </div>
             )}
 
             {activeTab === 'debug' && isAdmin && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div className="settings-tab-content">
                 <div className="settings-section-title">Debug Console</div>
                 <div className="settings-debug-warning">
                    ⚠️ Warning: These settings are primitive and potentially dangerous. Only modify these if you know what you're doing.
@@ -532,6 +627,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <textarea 
                   value={localDebugText} 
                   onChange={(e) => handleDebugTextChange(e.target.value)}
+                  spellCheck={false}
                   style={{ flex: 1, minHeight: '200px', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem' }}
                 />
                 <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid rgba(255,123,114,0.3)', borderRadius: '8px', background: 'rgba(255,123,114,0.05)' }}>
@@ -546,15 +642,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
                 </div>
+                {renderStickyActions()}
               </div>
             )}
           </div>
         </div>
 
-        <div className="modal-actions">
-          <button onClick={handleCloseRequest} className="btn-secondary">Cancel</button>
-          <button onClick={handleSaveAll} className="btn-primary">Save Changes</button>
-        </div>
       </div>
     </div>
   );

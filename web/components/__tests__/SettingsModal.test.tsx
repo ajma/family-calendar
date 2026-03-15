@@ -42,6 +42,8 @@ describe('SettingsModal', () => {
     vi.clearAllMocks();
     // Mock window.confirm
     vi.stubGlobal('confirm', vi.fn(() => true));
+    // Mock window.alert
+    vi.stubGlobal('alert', vi.fn());
   });
 
   it('renders correctly and shows vertical tabs', () => {
@@ -89,51 +91,54 @@ describe('SettingsModal', () => {
     fireEvent.click(checkboxes[0]); // Select first calendar
     
     // Switch to Attendees and change name
-    fireEvent.click(screen.getByText('👥 Attendees'));
-    const nameInput = screen.getByPlaceholderText('Name');
-    fireEvent.change(nameInput, { target: { value: 'Alice Edited' } });
+    // First, let's verify we can switch if we save first. But here we just want to test save.
+    // Let's stay on Calendars and save.
     
-    // Save
-    fireEvent.click(screen.getByText('Save Changes'));
+    // Save (using the sticky save button in current tab)
+    fireEvent.click(screen.getAllByText('Save')[0]); 
     
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: 'cal-1', selected: true })]),
-      expect.arrayContaining([expect.objectContaining({ name: 'Alice Edited' })])
+      expect.any(Array)
     );
   });
 
-  it('warns about unsaved changes when cancelling with edits', () => {
+  it('shows custom guard when closing modal with edits', () => {
     render(<SettingsModal {...defaultProps} />);
     
     // Make a change
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
     
-    // Click Cancel
-    fireEvent.click(screen.getByText('Cancel'));
+    // Click Close (header button)
+    fireEvent.click(screen.getByText('×'));
     
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('unsaved changes'));
+    // Should show custom guard
+    expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+    expect(screen.getByText(/What would you like to do before exiting/)).toBeInTheDocument();
+    
+    // Click Discard & Exit
+    fireEvent.click(screen.getByText('Discard & Exit'));
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('does not warn when cancelling without edits', () => {
+  it('does not warn when closing modal without edits', () => {
     render(<SettingsModal {...defaultProps} />);
     
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('×'));
     
     expect(window.confirm).not.toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('does not warn when cancelling if people order is different but content is same', () => {
+  it('does not warn when closing if people order is different but content is same', () => {
     const unsortedPeople = [
       { email: 'bob@example.com', name: 'Bob', initials: 'B', color: '#00ff00', show: true },
       { email: 'alice@example.com', name: 'Alice', initials: 'A', color: '#ff0000', show: true }
     ];
     render(<SettingsModal {...defaultProps} people={unsortedPeople} />);
     
-    // The component sorts them internally, but normalization in isDirty should handle it
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('×'));
     
     expect(window.confirm).not.toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
@@ -164,7 +169,7 @@ describe('SettingsModal', () => {
     fireEvent.change(textarea, { target: { value: JSON.stringify(newConfig, null, 2) } });
     
     // Save
-    fireEvent.click(screen.getByText('Save Changes'));
+    fireEvent.click(screen.getAllByText('Save')[0]); // Now only one should be active/rendered in the tab
     
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: 'cal-new', emoji: '🔥' })]),
@@ -189,7 +194,7 @@ describe('SettingsModal', () => {
     expect(screen.getByText('＋')).toBeInTheDocument();
     
     // Save and verify onSave excludes emoji
-    fireEvent.click(screen.getByText('Save Changes'));
+    fireEvent.click(screen.getAllByText('Save')[0]); 
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: 'cal-1', emoji: null })]),
       expect.any(Array)
@@ -255,5 +260,136 @@ describe('SettingsModal', () => {
     expect(screen.getByDisplayValue('alice@work.com')).toBeInTheDocument();
     // And no longer a tag under Alice
     expect(screen.queryByTitle('Unmerge email')).not.toBeInTheDocument();
+  });
+
+  it('blocks tab navigation with a custom dialog when dirty', () => {
+    render(<SettingsModal {...defaultProps} />);
+    
+    // Make a change in Calendars
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    
+    // Try to switch to Attendees
+    fireEvent.click(screen.getByText('👥 Attendees'));
+    
+    // Should show custom dialog and NOT switch yet
+    expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+    expect(screen.getByText(/What would you like to do before switching/)).toBeInTheDocument();
+    expect(screen.getByText('Calendar Subscriptions')).toBeInTheDocument();
+    
+    // Click Discard & Switch
+    fireEvent.click(screen.getByText('Discard & Switch'));
+    
+    // Should now show Attendees tab
+    expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+  });
+
+  it('allows saving and switching via the custom guard', () => {
+    render(<SettingsModal {...defaultProps} />);
+    
+    // Make a change in Calendars
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    
+    // Try to switch to Attendees
+    fireEvent.click(screen.getByText('👥 Attendees'));
+    
+    // Click Save & Switch
+    fireEvent.click(screen.getByText('Save & Switch'));
+    
+    // Verify save was called and tab switched
+    expect(defaultProps.onSave).toHaveBeenCalled();
+    expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+  });
+
+  it('disables the save button when not dirty', () => {
+    render(<SettingsModal {...defaultProps} />);
+    
+    const saveBtn = screen.getAllByText('Save')[0];
+    expect(saveBtn).toBeDisabled();
+    
+    // Make it dirty
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    
+    expect(saveBtn).not.toBeDisabled();
+  });
+
+  it('enables the save button when editing raw JSON in the Debug tab', () => {
+    render(<SettingsModal {...defaultProps} />);
+    fireEvent.click(screen.getByText('🐛 Debug'));
+    
+    const saveBtn = screen.getByText('Save');
+    expect(saveBtn).toBeDisabled();
+    
+    const textarea = screen.getByRole('textbox');
+    const newConfig = {
+      calendar_configs: { 'cal-1': { selected: true, emoji: '🔥' } },
+      people: PEOPLE
+    };
+    
+    // Make a change (valid JSON)
+    fireEvent.change(textarea, { target: { value: JSON.stringify(newConfig, null, 2) } });
+    
+    // Now it should be enabled
+    expect(saveBtn).not.toBeDisabled();
+
+    // Make a change (invalid JSON)
+    fireEvent.change(textarea, { target: { value: '{ invalid: json }' } });
+    expect(saveBtn).not.toBeDisabled();
+  });
+
+  it('stays on the same tab after saving', () => {
+    const { rerender } = render(<SettingsModal {...defaultProps} />);
+    
+    // Switch to Attendees
+    fireEvent.click(screen.getByText('👥 Attendees'));
+    expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+    
+    // Make a change
+    const nameInput = screen.getByPlaceholderText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Alice Edited' } });
+    
+    // Save
+    fireEvent.click(screen.getByText('Save'));
+    
+    // Simulate parent updating props
+    const newPeople = [{ ...PEOPLE[0], name: 'Alice Edited' }];
+    rerender(<SettingsModal {...defaultProps} people={newPeople} />);
+    
+    // Should STILL be on Attendees tab
+    expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+  });
+
+  it('triggers close flow when sidebar Exit button is clicked', () => {
+    render(<SettingsModal {...defaultProps} />);
+    
+    // Click Exit in sidebar
+    fireEvent.click(screen.getByText('🚪 Exit'));
+    
+    // No edits, should close immediately
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it('shows custom guard when clicking sidebar Exit with edits', () => {
+    render(<SettingsModal {...defaultProps} />);
+    
+    // Make a change
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    
+    // Click Exit in sidebar
+    fireEvent.click(screen.getByText('🚪 Exit'));
+    
+    // Should show custom guard
+    expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+    expect(screen.getByText('Save & Exit')).toBeInTheDocument();
+    
+    // Click Save & Exit
+    fireEvent.click(screen.getByText('Save & Exit'));
+    
+    expect(defaultProps.onSave).toHaveBeenCalled();
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 });
