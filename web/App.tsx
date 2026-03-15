@@ -3,7 +3,6 @@ import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import CalendarHeader from './components/CalendarHeader';
 import WeekGrid from './components/WeekGrid';
 import SettingsModal from './components/SettingsModal';
-import HelpModal from './components/HelpModal';
 import PresentationControls from './components/PresentationControls';
 import { usePresentationMode } from './hooks/usePresentationMode';
 import { useCalendarData } from './hooks/useCalendarData';
@@ -32,6 +31,7 @@ function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('session_token') || null);
   const [errorMSG, setErrorMSG] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>(VIEWS.MAIN);
+  const [settingsTab, setSettingsTab] = useState<string>('calendars');
 
   // Dynamic View Helper
   const isView = (target: ViewType) => view === target;
@@ -163,11 +163,8 @@ function App() {
           e.preventDefault();
           presentBtnRef.current?.click();
         } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
-          helpBtnRef.current?.click();
-        }
-      } else if (isView(VIEWS.HELP)) {
-        if (e.key === 'Escape') {
-          setView(VIEWS.MAIN);
+          setSettingsTab('guide');
+          setView(VIEWS.SETTINGS);
         }
       }
     };
@@ -220,24 +217,14 @@ function App() {
               <button 
                 className="control-btn glass" 
                 style={{ marginRight: '1rem' }} 
-                onClick={() => setView(VIEWS.SETTINGS)}
+                onClick={() => { setSettingsTab('calendars'); setView(VIEWS.SETTINGS); }}
                 title="Settings"
               >
                 ⚙️ Settings
               </button>
             )}
 
-            {sessionToken && isView(VIEWS.MAIN) && (
-              <button 
-                ref={helpBtnRef}
-                className="control-btn glass help-trigger" 
-                style={{ marginRight: '1rem' }} 
-                title="Help (?)"
-                onClick={() => setView(VIEWS.HELP)}
-              >
-                ❓ Help
-              </button>
-            )}
+
 
             {sessionToken && (
               <button 
@@ -328,13 +315,9 @@ function App() {
             onSave={handleSettingsSave}
             onLogout={logout}
             onFullReset={handleFullReset}
+            initialTab={settingsTab}
           />
         )}
-
-        <HelpModal 
-          isOpen={isView(VIEWS.HELP)} 
-          onClose={() => setView(VIEWS.MAIN)} 
-        />
       </div>
       <footer className="version-label">
         v{import.meta.env.PACKAGE_VERSION}
