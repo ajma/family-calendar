@@ -54,6 +54,22 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    ```
 5. Open up `http://localhost:5173` in your browser.
 
+### Production Usage
+
+To run the application in a production environment without development tools:
+
+1. **Build the application**:
+   ```bash
+   npm run build
+   ```
+   This will compile the frontend into `/dist` and the server into `/dist-server`.
+
+2. **Start the server**:
+   ```bash
+   node dist-server/index.js
+   ```
+   The server will run using the compiled ESM bundle in `dist-server/index.js`. Alternatively, you can use `npm start`.
+
 ### Docker Compose
 
 Alternatively, you can run the application directly for production using Docker Compose. The Docker container runs both the API and the compiled frontend together on a unified port.

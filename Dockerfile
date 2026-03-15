@@ -13,7 +13,7 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Build the Vite application for production
+# Build the application (Vite + esbuild)
 RUN npm run build
 
 # Production stage
@@ -25,11 +25,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# Copy backend files
-COPY server/ ./server/
-
 # Copy built frontend assets
 COPY --from=build /app/dist ./dist
+
+# Copy built backend assets
+COPY --from=build /app/dist-server ./dist-server
 
 # Create a volume for the SQLite database so settings persist across container restarts
 VOLUME ["/app/data"]
@@ -41,5 +41,5 @@ ENV PORT=5173
 # Expose the single port Express is running on
 EXPOSE 5173
 
-# Start the Express server
-CMD ["npm", "start"]
+# Start the application directly with node for better signal handling
+CMD ["node", "dist-server/index.js"]
