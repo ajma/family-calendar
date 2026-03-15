@@ -43,15 +43,6 @@ async function getFreshAccessToken(userId: string): Promise<string | null | unde
 
 /**
  * @api {get} /api/calendar/list List Calendars
- * @apiName GetCalendarList
- * @apiGroup Calendar
- * @apiPermission session
- *
- * @apiSuccess {Object[]} items List of user calendars
- *
- * @apiError (401) {String} error User not authenticated
- * @apiError (401) {String} error Could not obtain Google access token
- * @apiError (500) {String} error Failed to fetch calendars
  */
 router.get('/list', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -80,18 +71,6 @@ router.get('/list', authenticateSession, async (req: AuthenticatedRequest, res: 
 
 /**
  * @api {get} /api/calendar/events List Events
- * @apiName GetCalendarEvents
- * @apiGroup Calendar
- * @apiPermission session
- *
- * @apiQuery {String} timeMin ISO 8601 start time
- * @apiQuery {String} timeMax ISO 8601 end time
- *
- * @apiSuccess {Object[]} items List of processed event objects
- *
- * @apiError (400) {String} error timeMin and timeMax are required
- * @apiError (401) {String} error User not authenticated
- * @apiError (500) {String} error Failed to fetch events
  */
 router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     const { timeMin, timeMax } = req.query as { timeMin?: string, timeMax?: string };
@@ -109,7 +88,12 @@ router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res
             .filter(([, config]) => config.selected)
             .map(([id]) => id);
 
-        if (selectedCalendarIds.length === 0) return res.json([]);
+        console.log(`Server: Fetching events for ${selectedCalendarIds.length} calendars: ${selectedCalendarIds.join(', ')}`);
+
+        if (selectedCalendarIds.length === 0) {
+            console.log('Server: No calendars selected, returning empty array.');
+            return res.json([]);
+        }
 
         const queryParams = new URLSearchParams({
             timeMin, timeMax,
@@ -126,13 +110,18 @@ router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res
             const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?${params}`;
             const response = await fetch(url, { headers: { Authorization: `Bearer ${googleToken}` } });
             
-            if (!response.ok) return [];
+            if (!response.ok) {
+                console.warn(`Server: Failed to fetch events for calendar ${calId}. Status: ${response.status}`);
+                return [];
+            }
             const data = await response.json();
+            console.log(`Server: Fetched ${data.items?.length || 0} events for ${calId}`);
             return (data.items || []).map((event: GoogleCalendarEvent) => ({ ...event, _calendarId: calId }));
         };
 
         const results = await Promise.all(selectedCalendarIds.map(fetchCalendarEvents));
         const processed: GoogleCalendarEvent[] = processEvents(results.flat());
+        console.log(`Server: Returning ${processed.length} processed events.`);
         res.json(processed);
     } catch (error: unknown) {
         const httpErr = error as HttpError;

@@ -83,6 +83,12 @@ describe('SettingsModal', () => {
     expect(defaultProps.onLogout).toHaveBeenCalled();
   });
 
+  it('hides Danger Zone from account tab for non-admin users', () => {
+    render(<SettingsModal {...defaultProps} isAdmin={false} />);
+    fireEvent.click(screen.getByText('👤 Account'));
+    expect(screen.queryByText('Danger Zone')).not.toBeInTheDocument();
+  });
+
   it('calls onSave with both calendar and attendee changes when Save is clicked', () => {
     render(<SettingsModal {...defaultProps} />);
     
@@ -146,7 +152,7 @@ describe('SettingsModal', () => {
 
   it('handles full reset with confirmation', () => {
     render(<SettingsModal {...defaultProps} />);
-    fireEvent.click(screen.getByText('🐛 Debug'));
+    fireEvent.click(screen.getByText('👤 Account'));
     
     fireEvent.click(screen.getByText('Full Factory Reset'));
     const confirmInput = screen.getByPlaceholderText('Type DELETE');
@@ -391,5 +397,27 @@ describe('SettingsModal', () => {
     
     expect(defaultProps.onSave).toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it('stays clean when props change in background if no local edits have been made', () => {
+    const { rerender } = render(<SettingsModal {...defaultProps} />);
+    
+    // Save button should be disabled initially
+    const saveBtn = screen.getAllByText('Save')[0];
+    expect(saveBtn).toBeDisabled();
+    
+    // Simulate background "discovery" change
+    const newConfigs = { 'cal-1': { selected: true } } as any;
+    rerender(<SettingsModal {...defaultProps} calendarConfigs={newConfigs} />);
+    
+    // Save button should STILL be disabled (not dirty)
+    expect(screen.getAllByText('Save')[0]).toBeDisabled();
+    
+    // Now make a local change (unselect)
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    
+    // Now it should be dirty
+    expect(screen.getAllByText('Save')[0]).not.toBeDisabled();
   });
 });

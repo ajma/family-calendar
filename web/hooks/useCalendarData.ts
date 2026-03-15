@@ -61,7 +61,7 @@ export function useCalendarData(sessionToken: string | null) {
         setSettingsLoaded(true);
         
         // Pass fresh data into initial loads to avoid race with local state
-        loadEvents(finalConfigs, finalPeople);
+        loadEvents(finalConfigs, finalPeople, true);
       } catch (e) {
         console.error('Failed to load settings from DB', e);
         setSettingsLoaded(true);
@@ -91,29 +91,28 @@ export function useCalendarData(sessionToken: string | null) {
 
       const primaryCal = data.find(c => c.primary);
       if (primaryCal) {
-        setCalendarConfigs(prev => {
-          const hasSelections = Object.values(prev).some(config => config.selected);
-          if (!hasSelections) {
-            const newConfigs = {
-              ...prev,
-              [primaryCal.id]: { ...prev[primaryCal.id], selected: true }
-            };
-            // Note: We update local state, but we don't automatically persist to server 
-            // during this "discovery" phase to avoid overwriting legitimate DB state 
-            // if loadUserData is still finishing its state updates.
-            localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
-            return newConfigs;
-          }
-          return prev;
-        });
-      }
+          setCalendarConfigs(prev => {
+            const hasSelections = Object.values(prev).some(config => config.selected);
+            if (!hasSelections) {
+              const newConfigs = {
+                ...prev,
+                [primaryCal.id]: { ...prev[primaryCal.id], selected: true }
+              };
+              localStorage.setItem('calendar_configs', JSON.stringify(newConfigs));
+              // Auto-persist default selection so first load works
+              persistSettings(newConfigs, peopleDB).catch(e => console.error('autoPersistError', e));
+              return newConfigs;
+            }
+            return prev;
+          });
+        }
     } catch (error) {
       console.error('Failed to load calendars', error);
     }
   };
 
-  const loadEvents = async (configsOverride?: Record<string, CalendarConfig>, peopleOverride?: Person[]) => {
-    if (!sessionToken || !settingsLoaded) return;
+  const loadEvents = async (configsOverride?: Record<string, CalendarConfig>, peopleOverride?: Person[], ignoreSettingsLoaded: boolean = false) => {
+    if (!sessionToken || (!settingsLoaded && !ignoreSettingsLoaded)) return;
     const currentConfigs = configsOverride || calendarConfigs;
     const currentPeople = peopleOverride || peopleDB;
 

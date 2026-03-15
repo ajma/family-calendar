@@ -49,43 +49,97 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [pendingTabSwitch, setPendingTabSwitch] = useState<string | null>(null);
   
   const pickerRef = useRef<HTMLDivElement>(null);
+  const lastPropsConfigs = useRef<string>(JSON.stringify(calendarConfigs));
+  const lastPropsPeople = useRef<string>('');
 
   // Initialize state when modal opens
   useEffect(() => {
     if (isOpen) {
+      const sortFn = (a: Person, b: Person) => (a.name || a.email || '').localeCompare(b.name || b.email || '');
+      const normalizePeople = (pList: (Person | LocalPerson)[]) => JSON.stringify(
+        [...pList]
+          .map((p) => { const { _id, ...rest } = p as LocalPerson; return rest; })
+          .sort(sortFn)
+      );
+
       setLocalConfigs(JSON.parse(JSON.stringify(calendarConfigs)));
       
-      const sortedPeople = [...people].sort((a, b) => {
-        const nameA = a.name || a.email || '';
-        const nameB = b.name || b.email || '';
-        return nameA.localeCompare(nameB);
-      }).map(p => ({ ...p, _id: p.email + Math.random() }));
+      const sortedPeople = [...people].sort(sortFn).map(p => ({ ...p, _id: p.email + Math.random() }));
       setLocalPeople(sortedPeople);
 
-      // Debug state
-      const debugData = { calendar_configs: calendarConfigs, people };
+      // Debug state - must match the sorting used in track dirty state
+      const debugData = { 
+        calendar_configs: calendarConfigs, 
+        people: [...people].sort(sortFn) 
+      };
       setLocalDebugText(JSON.stringify(debugData, null, 2));
 
       setIsDirty(false);
       setIsResetConfirming(false);
       setResetConfirmationText('');
       if (initialTab) setActiveTab(initialTab);
+
+      // Track the baseline props we initialized with
+      lastPropsConfigs.current = JSON.stringify(calendarConfigs);
+      lastPropsPeople.current = normalizePeople(people);
     }
   }, [isOpen]);
+
+  // Background Sync: If props change while modal is open, and the user 
+  // hasn't made any local changes yet, sync local state to the new props.
+  // This avoids the modal appearing "dirty" due to background discovery logic.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const sortFn = (a: Person, b: Person) => (a.name || a.email || '').localeCompare(b.name || b.email || '');
+    const normalizePeople = (pList: (Person | LocalPerson)[]) => JSON.stringify(
+      [...pList]
+        .map((p) => { const { _id, ...rest } = p as LocalPerson; return rest; })
+        .sort(sortFn)
+    );
+
+    const currentPropsConfigs = JSON.stringify(calendarConfigs);
+    const currentPropsPeople = normalizePeople(people);
+    
+    if (currentPropsConfigs !== lastPropsConfigs.current || currentPropsPeople !== lastPropsPeople.current) {
+      const isLocalConfigsUnchanged = JSON.stringify(localConfigs) === lastPropsConfigs.current;
+      const isLocalPeopleUnchanged = normalizePeople(localPeople) === lastPropsPeople.current;
+
+      if (isLocalConfigsUnchanged) {
+        setLocalConfigs(JSON.parse(currentPropsConfigs));
+        lastPropsConfigs.current = currentPropsConfigs;
+      }
+      if (isLocalPeopleUnchanged) {
+        const sortedPeople = [...people].sort(sortFn).map(p => ({ ...p, _id: p.email + Math.random() }));
+        setLocalPeople(sortedPeople);
+        lastPropsPeople.current = currentPropsPeople;
+      }
+      
+      // If we updated anything, we also need to update the lastProps to match current props 
+      // so we don't keep trying to sync if the user then starts editing.
+      if (!isLocalConfigsUnchanged) lastPropsConfigs.current = currentPropsConfigs;
+      if (!isLocalPeopleUnchanged) lastPropsPeople.current = currentPropsPeople;
+    }
+  }, [calendarConfigs, people, isOpen, localConfigs, localPeople]);
 
   // Track dirty state
   useEffect(() => {
     if (!isOpen) return;
     
+    const sortFn = (a: Person, b: Person) => (a.name || a.email || '').localeCompare(b.name || b.email || '');
+
     const normalizePeople = (pList: (Person | LocalPerson)[]) => JSON.stringify(
       [...pList]
         .map((p) => { const { _id, ...rest } = p as LocalPerson; return rest; })
-        .sort((a, b) => (a.email || '').localeCompare(b.email || ''))
+        .sort(sortFn)
     );
 
     const initialConfigs = JSON.stringify(calendarConfigs);
     const initialPeople = normalizePeople(people);
-    const initialDebugText = JSON.stringify({ calendar_configs: calendarConfigs, people }, null, 2);
+    const initialDebugText = JSON.stringify({ 
+      calendar_configs: calendarConfigs, 
+      people: [...people].sort(sortFn) 
+    }, null, 2);
     
     const currentConfigs = JSON.stringify(localConfigs);
     const currentPeople = normalizePeople(localPeople);
@@ -99,7 +153,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (activeTab !== 'debug') {
       setLocalDebugText(JSON.stringify({ 
         calendar_configs: localConfigs, 
-        people: localPeople.map(({ _id, ...rest }) => rest) 
+        people: localPeople.map(({ _id, ...rest }) => rest).sort(sortFn)
       }, null, 2));
     }
   }, [localConfigs, localPeople, calendarConfigs, people, isOpen, activeTab, localDebugText]);
@@ -555,6 +609,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>Logged in as: <span className="settings-account-email">{userEmail}</span></div>
                   <button onClick={onLogout} className="btn-secondary" style={{ alignSelf: 'flex-start', color: '#ff7b72', borderColor: '#ff7b72' }}>Sign Out</button>
                 </div>
+
+                {isAdmin && (
+                  <div style={{ marginTop: '2rem', padding: '1.25rem', border: '1px solid rgba(255,123,114,0.3)', borderRadius: '12px', background: 'rgba(255,123,114,0.05)' }}>
+                    <div style={{ fontWeight: 'bold', color: '#ff7b72', marginBottom: '0.5rem', fontSize: '1rem' }}>Danger Zone</div>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                      Permanently delete all calendar configurations and attendee data for every user. This action cannot be undone.
+                    </p>
+                    {!isResetConfirming ? (
+                      <button onClick={() => setIsResetConfirming(true)} className="btn-secondary" style={{ color: '#ff7b72', borderColor: '#ff7b72' }}>Full Factory Reset</button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input type="text" value={resetConfirmationText} onChange={(e) => setResetConfirmationText(e.target.value)} placeholder="Type DELETE" style={{ padding: '0.4rem', border: '1px solid #ff7b72', borderRadius: '4px', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
+                        <button onClick={onFullReset} disabled={resetConfirmationText !== 'DELETE'} className="btn-primary" style={{ background: resetConfirmationText === 'DELETE' ? '#ff7b72' : 'var(--border-color)' }}>Confirm</button>
+                        <button onClick={() => setIsResetConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -630,18 +702,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   spellCheck={false}
                   style={{ flex: 1, minHeight: '200px', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem' }}
                 />
-                <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid rgba(255,123,114,0.3)', borderRadius: '8px', background: 'rgba(255,123,114,0.05)' }}>
-                  <div style={{ fontWeight: 'bold', color: '#ff7b72', marginBottom: '0.5rem' }}>Danger Zone</div>
-                  {!isResetConfirming ? (
-                    <button onClick={() => setIsResetConfirming(true)} className="btn-secondary" style={{ color: '#ff7b72', borderColor: '#ff7b72' }}>Full Factory Reset</button>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input type="text" value={resetConfirmationText} onChange={(e) => setResetConfirmationText(e.target.value)} placeholder="Type DELETE" style={{ padding: '0.4rem', border: '1px solid #ff7b72', borderRadius: '4px', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
-                      <button onClick={onFullReset} disabled={resetConfirmationText !== 'DELETE'} className="btn-primary" style={{ background: resetConfirmationText === 'DELETE' ? '#ff7b72' : 'var(--border-color)' }}>Confirm</button>
-                      <button onClick={() => setIsResetConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-                    </div>
-                  )}
-                </div>
                 {renderStickyActions()}
               </div>
             )}

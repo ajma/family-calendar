@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 92 tests across 11 files.**
+**Total: 93 tests across 11 files.**
 
 To run:
 
@@ -157,11 +157,12 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - **Account Tab**:
     - Identity: Displays the currently logged-in user email.
     - Sign Out: Triggers the logout flow.
+    - **Danger Zone**: Verifies that the factory reset section is visible and functional only within this tab.
+    - **Admin-Only Visibility**: Confirmed via a dedicated test that the Danger Zone is hidden for non-admin users.
 - **Debug Tab**:
     - Admin-Only: Only visible when `isAdmin` is true.
     - **Invalid JSON Support**: Verifies that even invalid JSON edits trigger the dirty state and enable the Save button.
     - **Spell Check**: Confirms spell check is disabled in the debug textarea.
-    - Factory Reset: Verifies the two-stage "DELETE" confirmation flow before wiping data.
 - **Keyboard Navigation**: Closes the dialog via **Escape** (with dirty check).
 
 ---
