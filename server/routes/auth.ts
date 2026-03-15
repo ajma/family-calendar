@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { saveUserTokens } from '../db';
+import { AuthExchangeResponse } from '../../common/types';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
@@ -34,7 +35,8 @@ router.post('/', async (req, res) => {
         await saveUserTokens(email, tokens.access_token || null, tokens.refresh_token || null, tokens.expiry_date || null);
 
         const sessionToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ session_token: sessionToken, email });
+        const response: AuthExchangeResponse = { session_token: sessionToken, email };
+        res.json(response);
     } catch (error) {
         console.error('Token exchange error:', error);
         res.status(500).json({ error: 'Failed to exchange auth code' });

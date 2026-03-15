@@ -3,7 +3,7 @@ import { authenticateSession, AuthenticatedRequest } from '../middleware/auth';
 import { getUserTokens, saveUserTokens, getUserSettings } from '../db';
 import { OAuth2Client } from 'google-auth-library';
 import { processEvents } from '../services/eventService';
-import { CalendarConfig, GoogleCalendarEvent } from '../../common/types';
+import { CalendarConfig, GoogleCalendarEvent, GoogleCalendar } from '../../common/types';
 
 const router = express.Router();
 
@@ -52,7 +52,8 @@ router.get('/list', authenticateSession, async (req: AuthenticatedRequest, res: 
         }
         
         const data = await response.json();
-        res.json(data.items || []);
+        const items: GoogleCalendar[] = data.items || [];
+        res.json(items);
     } catch (error: unknown) {
         const httpErr = error as HttpError;
         console.error('Error fetching calendars:', httpErr);
@@ -102,7 +103,7 @@ router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res
         };
 
         const results = await Promise.all(selectedCalendarIds.map(fetchCalendarEvents));
-        const processed = processEvents(results.flat());
+        const processed: GoogleCalendarEvent[] = processEvents(results.flat());
         res.json(processed);
     } catch (error: unknown) {
         const httpErr = error as HttpError;

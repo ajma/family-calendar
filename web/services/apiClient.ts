@@ -5,7 +5,7 @@
  * so that App.tsx can log the user out automatically — regardless of which
  * service function triggered the request.
  */
-export async function apiClient(url: string, options: RequestInit = {}) {
+export async function apiClient<T>(url: string, options: RequestInit = {}): Promise<T> {
     const response = await fetch(url, options);
 
     if (response.status === 401 || response.status === 403) {
@@ -20,5 +20,5 @@ export async function apiClient(url: string, options: RequestInit = {}) {
         throw new Error(data.error || `Request failed (${response.status})`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
 }

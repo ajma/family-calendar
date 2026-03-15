@@ -52,3 +52,26 @@ export interface Person {
   hidden?: boolean;
   alternateEmails?: string[];
 }
+
+// ─── API Responses ────────────────────────────────────────────────────────────
+
+export interface UserSettingsResponse {
+  email: string;
+  calendarConfigs: Record<string, CalendarConfig>;
+  people: Person[];
+  isAdmin: boolean;
+  isNewUser: boolean;
+}
+
+export interface AuthExchangeResponse {
+  session_token: string;
+  email: string;
+}
+
+export interface SuccessResponse {
+  success: boolean;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

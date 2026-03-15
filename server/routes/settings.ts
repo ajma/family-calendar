@@ -1,7 +1,7 @@
 import express, { Response } from 'express';
 import { authenticateSession, AuthenticatedRequest } from '../middleware/auth';
 import { getUserSettings, saveUserSettings, clearAllUserSettings } from '../db';
-import { CalendarConfig, Person } from '../../common/types';
+import { UserSettingsResponse, SuccessResponse, CalendarConfig, Person } from '../../common/types';
 
 const router = express.Router();
 
@@ -20,13 +20,14 @@ router.get('/', authenticateSession, async (req: AuthenticatedRequest, res: Resp
         const hasPeople = settings?.people && settings.people.length > 0;
         const isNewUser = !hasConfigs && !hasPeople;
 
-        res.json({
+        const response: UserSettingsResponse = {
             email: userId,
             calendarConfigs: settings?.calendarConfigs || {},
             people: settings?.people || [],
             isAdmin,
             isNewUser
-        });
+        };
+        res.json(response);
     } catch (error: unknown) {
         console.error('Error fetching settings:', error);
         res.status(500).json({ error: 'Failed to fetch settings' });
@@ -42,7 +43,8 @@ router.put('/', authenticateSession, async (req: AuthenticatedRequest, res: Resp
         const userId = req.user.email;
         const { calendarConfigs, people } = req.body as { calendarConfigs: Record<string, CalendarConfig>; people: Person[] };
         await saveUserSettings(userId, calendarConfigs, people);
-        res.json({ success: true });
+        const response: SuccessResponse = { success: true };
+        res.json(response);
     } catch (error: unknown) {
         console.error('Error saving settings:', error);
         res.status(500).json({ error: 'Failed to save settings' });
@@ -63,7 +65,8 @@ router.post('/reset', authenticateSession, async (req: AuthenticatedRequest, res
         }
 
         await clearAllUserSettings();
-        res.json({ success: true });
+        const response: SuccessResponse = { success: true };
+        res.json(response);
     } catch (error: unknown) {
         console.error('Error clearing all settings:', error);
         res.status(500).json({ error: 'Failed to clear all settings' });
