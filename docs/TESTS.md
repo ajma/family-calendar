@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 84 tests across 11 files.**
+**Total: 92 tests across 11 files.**
 
 To run:
 
@@ -12,7 +12,7 @@ npm run test
 
 ---
 
-### `web/__tests__/PresentationMode.test.jsx`
+### `web/__tests__/PresentationMode.test.tsx`
 
 - **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
 - **Header Simplification**: Confirms that other buttons are hidden during presentation.
@@ -22,9 +22,16 @@ npm run test
 
 ---
 
+### `web/__tests__/Onboarding.test.tsx`
+
+- **First-Time Flow**: Verifies that new users (indicated by `isNewUser: true`) are automatically shown the User Guide upon login.
+- **Persistence**: Confirms that existing users are NOT shown the auto-popup.
+
+---
+
 ## Backend Tests
 
-### `server/__tests__/api.test.js`
+### `server/__tests__/api.test.ts`
 
 #### `GET /api/health`
 
@@ -39,11 +46,11 @@ npm run test
 #### `GET /api/settings`
 
 - Returns `401` when Authorization header is missing or invalid.
-- Returns empty defaults (`{ calendarConfigs: {}, people: [] }`) for a new user.
+- Returns empty defaults (`{ calendar_configs: {}, people: [] }`) for a new user.
 
 #### `PUT /api/settings`
 
-- Saves `calendarConfigs` and `people`; subsequent `GET` returns the persisted data.
+- Saves `calendar_configs` and `people`; subsequent `GET` returns the persisted data.
 
 #### `POST /api/settings/reset`
 
@@ -79,7 +86,7 @@ npm run test
 
 ---
 
-### `server/__tests__/crypto.test.js`
+### `server/__tests__/crypto.test.ts`
 
 - Encrypts and decrypts a string correctly.
 - Produces different ciphertext for the same input (randomized IV).
@@ -90,7 +97,7 @@ npm run test
 
 ## Frontend Tests
 
-### `web/utils/__tests__/eventEnrichment.test.js`
+### `web/utils/__tests__/annotateEnrichment.test.ts`
 
 Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
@@ -118,7 +125,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `web/components/__tests__/CalendarHeader.test.jsx`
+### `web/components/__tests__/CalendarHeader.test.tsx`
 
 - Renders correctly for a week within the same month.
 - Renders correctly across a month boundary.
@@ -127,12 +134,16 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `web/components/__tests__/SettingsModal.test.jsx`
+### `web/components/__tests__/SettingsModal.test.tsx`
 
 - **Vertical Navigation**: Verifies that user can switch between Calendars, Attendees, Account, and Debug tabs.
-- **Unsaved Changes Guard**: Confirms that trying to close (Escape/Cancel) after a change triggers a confirmation prompt.
-- **Tab Persistence**: Verifies that changes made in one tab (e.g. attendee name) are preserved when switching to another tab before saving.
-- **Unified Save**: Confirms that one "Save Changes" click persists both calendar configurations and people records.
+- **Custom Tab Guard**: Confirms that switching tabs with unsaved changes triggers a custom in-app dialog (Discard & Switch / Save & Switch).
+- **Unsaved Changes Guard**: Confirms that trying to close (Escape/X) after a change triggers a confirmation prompt.
+- **Exit Button**: Verifies that the sidebar **Exit** button correctly triggers the close flow.
+- **Save Behavior**: 
+    - **Persistence**: Clicking **Save** commits changes without closing the modal or resetting the active tab.
+    - **Floating Button**: Sticky button labeled **Save**, disabled until changes are made.
+- **Unified Save**: Confirms that one click persists both calendar configurations and people records.
 - **Calendars Tab**:
     - Renders a checkbox for each calendar.
     - Sorting: Lists calendars alphabetically.
@@ -143,19 +154,19 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
     - Initials Logic: Automatically generates 2-letter uppercase initials.
     - **Merging**: Verifies that merging one person into another deletes the source and adds their email to `alternateEmails`.
     - **Unmerging**: Verifies that clicking (x) on an alternate email removes it and creates a new standalone attendee.
-    - **Deduplication**: Verifies that if multiple emails for the same merged person are in one event, only one avatar is shown.
 - **Account Tab**:
     - Identity: Displays the currently logged-in user email.
     - Sign Out: Triggers the logout flow.
 - **Debug Tab**:
     - Admin-Only: Only visible when `isAdmin` is true.
-    - Safety: Displays a prominent warning disclaimer.
+    - **Invalid JSON Support**: Verifies that even invalid JSON edits trigger the dirty state and enable the Save button.
+    - **Spell Check**: Confirms spell check is disabled in the debug textarea.
     - Factory Reset: Verifies the two-stage "DELETE" confirmation flow before wiping data.
 - **Keyboard Navigation**: Closes the dialog via **Escape** (with dirty check).
 
 ---
 
-### `web/components/__tests__/WeekGrid.test.jsx`
+### `web/components/__tests__/WeekGrid.test.tsx`
 
 - Always renders exactly 7 day columns.
 - Week starts on Monday.
@@ -178,7 +189,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `web/components/__tests__/EventCard.test.jsx`
+### `web/components/__tests__/EventCard.test.tsx`
 
 - Renders the event summary.
 - Shows "Untitled Event" when summary is missing.
@@ -197,7 +208,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 
 ---
 
-### `web/__tests__/KeyboardShortcuts.test.jsx`
+### `web/__tests__/KeyboardShortcuts.test.tsx`
 
 - **Week Navigation**: Verifies that `ArrowLeft` and `ArrowRight` trigger clicks on the previous and next week buttons respectively.
 - **Presentation Trigger**: Verifies that `Space` triggers the "Present" button click from the main view.

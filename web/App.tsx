@@ -206,7 +206,6 @@ function App() {
     
     await persistSettings(configRecord, newPeople);
     await loadEvents(configRecord, newPeople);
-    setView(VIEWS.MAIN);
   };
 
   return (
