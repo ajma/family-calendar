@@ -185,8 +185,13 @@ function App() {
 
   const handleFullReset = async () => {
     if (sessionToken) await resetSettings(sessionToken);
-    setView(VIEWS.MAIN);
-    logout();
+    
+    // Preserve session token but clear other local data to simulate "first login"
+    const token = localStorage.getItem('session_token');
+    localStorage.clear();
+    if (token) localStorage.setItem('session_token', token);
+    
+    window.location.reload();
   };
 
   const handleSettingsSave = async (newConfigs: CalendarConfig[], newPeople: Person[]) => {

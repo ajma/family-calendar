@@ -126,5 +126,5 @@ export async function getUserTokens(userId: string): Promise<StoredTokens | null
 
 export async function clearAllUserSettings(): Promise<void> {
     const db = await getDb();
-    await db.run('DELETE FROM user_settings');
+    await db.run('UPDATE user_settings SET calendar_configs = NULL, people = NULL');
 }
