@@ -61,7 +61,8 @@ function App() {
     loadEvents,
     handleSaveAttendees,
     handleSaveCalendars,
-    persistSettings
+    persistSettings,
+    isNewUser
   }: {
     currentDate: Date;
     events: GoogleCalendarEvent[];
@@ -79,6 +80,7 @@ function App() {
     handleSaveAttendees: (people: Person[]) => Promise<void>;
     handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
     persistSettings: (configs: Record<string, CalendarConfig>, people: Person[]) => Promise<void>;
+    isNewUser: boolean;
   } = useCalendarData(sessionToken);
 
   // Presentation Mode Logic Hook
@@ -133,6 +135,14 @@ function App() {
     window.addEventListener('api-unauthorized', handleUnauthorized);
     return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
   }, []);
+
+  // First-time Onboarding Auto-popup
+  useEffect(() => {
+    if (isNewUser) {
+      setSettingsTab('guide');
+      setView(VIEWS.SETTINGS);
+    }
+  }, [isNewUser]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {

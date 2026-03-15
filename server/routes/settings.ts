@@ -16,14 +16,16 @@ router.get('/', authenticateSession, async (req: AuthenticatedRequest, res: Resp
         const isAdmin = Boolean(adminEmail && userId === adminEmail);
 
         const settings = await getUserSettings(userId);
-        if (!settings) {
-            return res.json({ email: userId, calendarConfigs: {}, people: [], isAdmin });
-        }
+        const hasConfigs = settings?.calendarConfigs && Object.keys(settings.calendarConfigs).length > 0;
+        const hasPeople = settings?.people && settings.people.length > 0;
+        const isNewUser = !hasConfigs && !hasPeople;
+
         res.json({
             email: userId,
-            calendarConfigs: settings.calendarConfigs || {},
-            people: settings.people || [],
+            calendarConfigs: settings?.calendarConfigs || {},
+            people: settings?.people || [],
             isAdmin,
+            isNewUser
         });
     } catch (error: unknown) {
         console.error('Error fetching settings:', error);

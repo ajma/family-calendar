@@ -54,6 +54,21 @@ describe('Backend API Tests', () => {
             expect(res.body.email).toBe('test@example.com');
             expect(res.body.calendarConfigs).toEqual({});
             expect(res.body.people).toEqual([]);
+            expect(res.body.isNewUser).toBe(true);
+        });
+
+        it('should return isNewUser: true if tokens exist but settings are empty', async () => {
+            // Simulate tokens being saved via OAuth exchange
+            const { saveUserTokens } = await import('../db');
+            await saveUserTokens('test@example.com', 'access', 'refresh', Date.now() + 3600);
+
+            const res = await request(app)
+                .get('/api/settings')
+                .set('Authorization', `Bearer ${TEST_TOKEN}`);
+            
+            expect(res.status).toBe(200);
+            expect(res.body.isNewUser).toBe(true);
+            expect(res.body.calendarConfigs).toEqual({});
         });
     });
 
@@ -76,10 +91,10 @@ describe('Backend API Tests', () => {
                 .get('/api/settings')
                 .set('Authorization', `Bearer ${TEST_TOKEN}`);
 
-            expect(getRes.status).toBe(200);
             expect(getRes.body.email).toBe('test@example.com');
             expect(getRes.body.calendarConfigs).toEqual(newSettings.calendarConfigs);
             expect(getRes.body.people).toEqual(newSettings.people);
+            expect(getRes.body.isNewUser).toBe(false);
         });
     });
 

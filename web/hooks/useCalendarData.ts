@@ -31,6 +31,7 @@ export function useCalendarData(sessionToken: string | null) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState(localStorage.getItem('user_email') || '');
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Load initial settings
   useEffect(() => {
@@ -56,6 +57,7 @@ export function useCalendarData(sessionToken: string | null) {
         }
         
         // Mark as loaded before calling other effects
+        setIsNewUser(!!settings.isNewUser);
         setSettingsLoaded(true);
         
         // Pass fresh data into initial loads to avoid race with local state
@@ -228,6 +230,7 @@ export function useCalendarData(sessionToken: string | null) {
     loadEvents,
     handleSaveAttendees,
     handleSaveCalendars,
-    persistSettings
+    persistSettings,
+    isNewUser
   };
 }
