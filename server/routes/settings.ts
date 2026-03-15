@@ -6,7 +6,19 @@ import { UserSettingsResponse, SuccessResponse, CalendarConfig, Person } from '.
 const router = express.Router();
 
 /**
- * GET /api/settings
+ * @api {get} /api/settings Fetch User Settings
+ * @apiName GetSettings
+ * @apiGroup Settings
+ * @apiPermission session
+ *
+ * @apiSuccess {String} email User's primary email address
+ * @apiSuccess {Object} calendarConfigs Map of calendar IDs to configurations
+ * @apiSuccess {Object[]} people List of discovered/managed people
+ * @apiSuccess {Boolean} isAdmin Whether the user has admin privileges
+ * @apiSuccess {Boolean} isNewUser Whether this is a first-time user profile
+ *
+ * @apiError (401) {String} error User not authenticated
+ * @apiError (500) {String} error Failed to fetch settings
  */
 router.get('/', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -35,7 +47,18 @@ router.get('/', authenticateSession, async (req: AuthenticatedRequest, res: Resp
 });
 
 /**
- * PUT /api/settings
+ * @api {put} /api/settings Save User Settings
+ * @apiName SaveSettings
+ * @apiGroup Settings
+ * @apiPermission session
+ *
+ * @apiBody {Object} calendarConfigs Map of calendar IDs to configurations
+ * @apiBody {Object[]} people List of people to save
+ *
+ * @apiSuccess {Boolean} success Operation success indicator
+ *
+ * @apiError (401) {String} error User not authenticated
+ * @apiError (500) {String} error Failed to save settings
  */
 router.put('/', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -52,7 +75,17 @@ router.put('/', authenticateSession, async (req: AuthenticatedRequest, res: Resp
 });
 
 /**
- * POST /api/settings/reset
+ * @api {post} /api/settings/reset Full Factory Reset
+ * @apiName ResetSettings
+ * @apiGroup Settings
+ * @apiPermission admin
+ * @apiDescription Clears all user configurations (calendars and people) across the platform. Requires admin email.
+ *
+ * @apiSuccess {Boolean} success Operation success indicator
+ *
+ * @apiError (401) {String} error User not authenticated
+ * @apiError (403) {String} error Only the admin can perform a full reset
+ * @apiError (500) {String} error Failed to clear all settings
  */
 router.post('/reset', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     try {

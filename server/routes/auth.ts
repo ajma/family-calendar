@@ -14,8 +14,18 @@ const oauth2Client = new OAuth2Client(
 );
 
 /**
- * POST /api/auth
- * Receives a one-time Google auth code, exchanges it for tokens, and issues a local JWT.
+ * @api {post} /api/auth Exchange Auth Code
+ * @apiName ExchangeAuthCode
+ * @apiGroup Auth
+ *
+ * @apiBody {String} code Google authorization code
+ *
+ * @apiSuccess {String} session_token Local session JWT
+ * @apiSuccess {String} email User email address
+ *
+ * @apiError (400) {String} error Auth code is required
+ * @apiError (401) {String} error Failed to identify user
+ * @apiError (500) {String} error Failed to exchange auth code
  */
 router.post('/', async (req, res) => {
     const { code } = req.body;

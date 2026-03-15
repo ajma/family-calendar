@@ -34,7 +34,16 @@ async function getFreshAccessToken(userId: string): Promise<string | null | unde
 }
 
 /**
- * GET /api/calendar/list
+ * @api {get} /api/calendar/list List Calendars
+ * @apiName GetCalendarList
+ * @apiGroup Calendar
+ * @apiPermission session
+ *
+ * @apiSuccess {Object[]} items List of user calendars
+ *
+ * @apiError (401) {String} error User not authenticated
+ * @apiError (401) {String} error Could not obtain Google access token
+ * @apiError (500) {String} error Failed to fetch calendars
  */
 router.get('/list', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -62,7 +71,19 @@ router.get('/list', authenticateSession, async (req: AuthenticatedRequest, res: 
 });
 
 /**
- * GET /api/calendar/events
+ * @api {get} /api/calendar/events List Events
+ * @apiName GetCalendarEvents
+ * @apiGroup Calendar
+ * @apiPermission session
+ *
+ * @apiQuery {String} timeMin ISO 8601 start time
+ * @apiQuery {String} timeMax ISO 8601 end time
+ *
+ * @apiSuccess {Object[]} items List of processed event objects
+ *
+ * @apiError (400) {String} error timeMin and timeMax are required
+ * @apiError (401) {String} error User not authenticated
+ * @apiError (500) {String} error Failed to fetch events
  */
 router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res: Response) => {
     const { timeMin, timeMax } = req.query as { timeMin?: string, timeMax?: string };
