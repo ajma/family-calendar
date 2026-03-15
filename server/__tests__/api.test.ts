@@ -262,4 +262,70 @@ describe('Backend API Tests', () => {
         });
     });
 
+    describe('Token Refresh Optimization', () => {
+        it('should NOT refresh token if current one is still valid', async () => {
+            const { OAuth2Client } = await import('google-auth-library');
+            const { saveUserTokens } = await import('../db');
+            
+            // 1. Setup a "valid" token in the DB (expires in 1 hour)
+            const oneHourOut = Date.now() + 3600 * 1000;
+            await saveUserTokens('test@example.com', 'valid_access_token', 'valid_refresh_token', oneHourOut);
+
+            // 2. Spy on refreshAccessToken
+            const refreshSpy = vi.spyOn(OAuth2Client.prototype, 'refreshAccessToken');
+
+            // 3. Mock the Google Calendar API response
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ items: [] })
+            });
+
+            // 4. Trigger a request that requires a fresh token
+            const res = await request(app)
+                .get('/api/calendar/list')
+                .set('Authorization', `Bearer ${TEST_TOKEN}`);
+
+            expect(res.status).toBe(200);
+            
+            // 5. Verify refresh was NOT called
+            expect(refreshSpy).not.toHaveBeenCalled();
+            refreshSpy.mockRestore();
+        });
+
+        it('should refresh token if current one is expired', async () => {
+            const { OAuth2Client } = await import('google-auth-library');
+            const { saveUserTokens } = await import('../db');
+            
+            // 1. Setup an "expired" token in the DB (expired 1 hour ago)
+            const oneHourAgo = Date.now() - 3600 * 1000;
+            await saveUserTokens('test@example.com', 'old_access_token', 'valid_refresh_token', oneHourAgo);
+
+            // 2. Mock refreshAccessToken to return a new one
+            const newExpiry = Date.now() + 3600 * 1000;
+            const refreshSpy = vi.spyOn(OAuth2Client.prototype, 'refreshAccessToken').mockResolvedValue({
+                credentials: {
+                    access_token: 'brand_new_token',
+                    expiry_date: newExpiry
+                }
+            } as any);
+
+            // 3. Mock the Google Calendar API response
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ items: [] })
+            });
+
+            // 4. Trigger request
+            const res = await request(app)
+                .get('/api/calendar/list')
+                .set('Authorization', `Bearer ${TEST_TOKEN}`);
+
+            expect(res.status).toBe(200);
+            
+            // 5. Verify refresh WAS called
+            expect(refreshSpy).toHaveBeenCalled();
+            refreshSpy.mockRestore();
+        });
+    });
+
 });
