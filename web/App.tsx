@@ -6,7 +6,7 @@ import SettingsModal from './components/SettingsModal';
 import PresentationControls from './components/PresentationControls';
 import { usePresentationMode } from './hooks/usePresentationMode';
 import { useCalendarData } from './hooks/useCalendarData';
-import { exchangeCode, resetSettings } from './services/backend';
+import { exchangeCode, resetSettings, checkAuthStatus } from './services/backend';
 import { filterHiddenAttendees } from './utils/annotateEnrichment';
 import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
@@ -29,9 +29,36 @@ type ViewType = typeof VIEWS[keyof typeof VIEWS];
 
 function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('session_token') || null);
+  const [hasRefreshToken, setHasRefreshToken] = useState<boolean>(true); 
   const [errorMSG, setErrorMSG] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>(VIEWS.MAIN);
   const [settingsTab, setSettingsTab] = useState<string>('calendars');
+
+  // Bootstrap session from Cloudflare or existing token
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const status = await checkAuthStatus();
+        if (status.session_token) {
+          setSessionToken(status.session_token);
+          localStorage.setItem('session_token', status.session_token);
+          setHasRefreshToken(status.hasRefreshToken);
+          
+          if (!status.hasRefreshToken) {
+            setErrorMSG('Connected via Cloudflare, but Google Calendar access is not yet authorized. Please Sign In below.');
+          }
+        } else {
+          setHasRefreshToken(false);
+          setSessionToken(null);
+          localStorage.removeItem('session_token');
+        }
+      } catch (e) {
+        // Not authenticated via any method or session expired
+        setHasRefreshToken(false);
+      }
+    };
+    bootstrap();
+  }, []);
 
   // Dynamic View Helper
   const isView = (target: ViewType) => view === target;
@@ -106,6 +133,7 @@ function App() {
         const { session_token } = await exchangeCode(codeResponse.code);
         setSessionToken(session_token);
         localStorage.setItem('session_token', session_token);
+        setHasRefreshToken(true);
         setErrorMSG(null);
       } catch (e) {
         console.error('Token exchange failed', e);
@@ -238,8 +266,6 @@ function App() {
               </button>
             )}
 
-
-
             {sessionToken && (
               <button 
                 ref={presentBtnRef}
@@ -251,7 +277,7 @@ function App() {
               </button>
             )}
 
-            {!sessionToken && (
+            {(!sessionToken || !hasRefreshToken) && (
               <button className="control-btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none' }} onClick={() => login()}>Sign In with Google</button>
             )}
           </div>

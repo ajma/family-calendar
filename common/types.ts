@@ -64,8 +64,8 @@ export interface UserSettingsResponse {
 }
 
 export interface AuthExchangeResponse {
-  session_token: string;
-  email: string;
+  session_token: string | null;
+  email: string | null;
 }
 
 export interface SuccessResponse {

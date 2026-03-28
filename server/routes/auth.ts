@@ -1,7 +1,8 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import { saveUserTokens } from '../db';
+import { saveUserTokens, getUserTokens } from '../db';
+import { authenticateSession, optionalAuthenticateSession, AuthenticatedRequest } from '../middleware/auth';
 import { AuthExchangeResponse } from '../../common/types';
 
 const router = express.Router();
@@ -51,6 +52,32 @@ router.post('/', async (req, res) => {
         console.error('Token exchange error:', error);
         res.status(500).json({ error: 'Failed to exchange auth code' });
     }
+});
+
+/**
+ * @api {get} /api/auth/status Check Current Authentication Status
+ * @apiName AuthStatus
+ * @apiGroup Auth
+ *
+ * Returns the current session info if authenticated via any method (JWT, Cloudflare).
+ * Used by the frontend on mount to detect existing Cloudflare sessions.
+ */
+router.get('/status', optionalAuthenticateSession, async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+        return res.json({ session_token: null, email: null, hasRefreshToken: false });
+    }
+    
+    const email = req.user.email;
+    const tokens = await getUserTokens(email);
+    const hasRefreshToken = !!tokens?.refreshToken;
+
+    const sessionToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '7d' });
+    const response = { 
+        session_token: sessionToken, 
+        email,
+        hasRefreshToken
+    };
+    res.json(response);
 });
 
 export default router;
