@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SettingsModal from '../SettingsModal';
 
@@ -14,6 +14,21 @@ global.IntersectionObserver = class IntersectionObserver {
   disconnect() {}
   takeRecords() { return []; }
 } as any;
+
+const mockUseCalendarContext = vi.fn();
+vi.mock('../../context/CalendarContext', () => ({
+  useCalendarContext: () => mockUseCalendarContext()
+}));
+
+const defaultContext = {
+  calendars: [{ id: 'cal-1', summary: 'Work' }, { id: 'cal-2', summary: 'Personal' }],
+  calendarConfigs: {},
+  peopleDB: [{ email: 'alice@example.com', name: 'Alice', initials: 'A', color: '#ff0000', show: true }],
+  userEmail: 'user@example.com',
+  isAdmin: true,
+  persistSettings: vi.fn(),
+  isSaving: false
+};
 
 const CALENDARS = [
   { id: 'cal-1', summary: 'Work' },
@@ -39,6 +54,8 @@ const defaultProps = {
 
 describe('SettingsModal', () => {
   beforeEach(() => {
+    defaultContext.persistSettings = defaultProps.onSave;
+    mockUseCalendarContext.mockReturnValue(defaultContext);
     vi.clearAllMocks();
     // Mock window.confirm
     vi.stubGlobal('confirm', vi.fn(() => true));
@@ -84,7 +101,8 @@ describe('SettingsModal', () => {
   });
 
   it('hides Danger Zone from account tab for non-admin users', () => {
-    render(<SettingsModal {...defaultProps} isAdmin={false} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, isAdmin: false});
+    render(<SettingsModal {...defaultProps} />);
     fireEvent.click(screen.getByText('👤 Account'));
     expect(screen.queryByText('Danger Zone')).not.toBeInTheDocument();
   });
@@ -104,7 +122,7 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getAllByText('Save')[0]); 
     
     expect(defaultProps.onSave).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'cal-1', selected: true })]),
+      expect.objectContaining({ 'cal-1': expect.objectContaining({ selected: true }) }),
       expect.any(Array)
     );
   });
@@ -142,7 +160,8 @@ describe('SettingsModal', () => {
       { email: 'bob@example.com', name: 'Bob', initials: 'B', color: '#00ff00', show: true },
       { email: 'alice@example.com', name: 'Alice', initials: 'A', color: '#ff0000', show: true }
     ];
-    render(<SettingsModal {...defaultProps} people={unsortedPeople} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, peopleDB: unsortedPeople});
+    render(<SettingsModal {...defaultProps} />);
     
     fireEvent.click(screen.getByText('×'));
     
@@ -178,14 +197,15 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getAllByText('Save')[0]); // Now only one should be active/rendered in the tab
     
     expect(defaultProps.onSave).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'cal-new', emoji: '🔥' })]),
+      expect.objectContaining({ 'cal-new': expect.objectContaining({ emoji: '🔥' }) }),
       expect.arrayContaining([expect.objectContaining({ name: 'New User' })])
     );
   });
 
   it('allows removing an emoji via the "No Emoji" button', () => {
     const configsWithEmoji = { 'cal-1': { selected: true, emoji: '📅' } } as any;
-    render(<SettingsModal {...defaultProps} calendarConfigs={configsWithEmoji} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, calendarConfigs: configsWithEmoji});
+    render(<SettingsModal {...defaultProps} />);
     
     // Check emoji is there
     expect(screen.getByText('📅')).toBeInTheDocument();
@@ -202,7 +222,7 @@ describe('SettingsModal', () => {
     // Save and verify onSave excludes emoji
     fireEvent.click(screen.getAllByText('Save')[0]); 
     expect(defaultProps.onSave).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'cal-1', emoji: null })]),
+      expect.objectContaining({ 'cal-1': expect.objectContaining({ emoji: null }) }),
       expect.any(Array)
     );
   });
@@ -218,7 +238,8 @@ describe('SettingsModal', () => {
       { _id: '1', email: 'alice@example.com', name: 'Alice', initials: 'A', color: '#ff0000', show: true },
       { _id: '2', email: 'bob@example.com', name: 'Bob', initials: 'B', color: '#00ff00', show: true }
     ] as any;
-    render(<SettingsModal {...defaultProps} people={people} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, peopleDB: people});
+    render(<SettingsModal {...defaultProps} />);
     
     fireEvent.click(screen.getByText('👥 Attendees'));
     
@@ -251,7 +272,8 @@ describe('SettingsModal', () => {
         alternateEmails: ['alice@work.com'] 
       }
     ] as any;
-    render(<SettingsModal {...defaultProps} people={people} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, peopleDB: people});
+    render(<SettingsModal {...defaultProps} />);
     
     fireEvent.click(screen.getByText('👥 Attendees'));
     
@@ -291,7 +313,7 @@ describe('SettingsModal', () => {
     expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
   });
 
-  it('allows saving and switching via the custom guard', () => {
+  it('allows saving and switching via the custom guard', async () => {
     render(<SettingsModal {...defaultProps} />);
     
     // Make a change in Calendars
@@ -305,8 +327,10 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByText('Save & Switch'));
     
     // Verify save was called and tab switched
-    expect(defaultProps.onSave).toHaveBeenCalled();
-    expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalled();
+      expect(screen.getByText('Attendee Management')).toBeInTheDocument();
+    });
   });
 
   it('disables the save button when not dirty', () => {
@@ -362,7 +386,8 @@ describe('SettingsModal', () => {
     
     // Simulate parent updating props
     const newPeople = [{ ...PEOPLE[0], name: 'Alice Edited' }];
-    rerender(<SettingsModal {...defaultProps} people={newPeople} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, peopleDB: newPeople});
+    rerender(<SettingsModal {...defaultProps} />);
     
     // Should STILL be on Attendees tab
     expect(screen.getByText('Attendee Management')).toBeInTheDocument();
@@ -378,7 +403,7 @@ describe('SettingsModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('shows custom guard when clicking sidebar Exit with edits', () => {
+  it('shows custom guard when clicking sidebar Exit with edits', async () => {
     render(<SettingsModal {...defaultProps} />);
     
     // Make a change
@@ -395,8 +420,10 @@ describe('SettingsModal', () => {
     // Click Save & Exit
     fireEvent.click(screen.getByText('Save & Exit'));
     
-    expect(defaultProps.onSave).toHaveBeenCalled();
-    expect(defaultProps.onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalled();
+      expect(defaultProps.onClose).toHaveBeenCalled();
+    });
   });
 
   it('stays clean when props change in background if no local edits have been made', () => {
@@ -408,7 +435,8 @@ describe('SettingsModal', () => {
     
     // Simulate background "discovery" change
     const newConfigs = { 'cal-1': { selected: true } } as any;
-    rerender(<SettingsModal {...defaultProps} calendarConfigs={newConfigs} />);
+    mockUseCalendarContext.mockReturnValue({...defaultContext, calendarConfigs: newConfigs});
+    rerender(<SettingsModal {...defaultProps} />);
     
     // Save button should STILL be disabled (not dirty)
     expect(screen.getAllByText('Save')[0]).toBeDisabled();

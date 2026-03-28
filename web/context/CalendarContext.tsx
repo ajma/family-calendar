@@ -1,10 +1,45 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
 import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
 import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
 
-export function useCalendarData(sessionToken: string | null) {
+interface CalendarContextType {
+  currentDate: Date;
+  events: GoogleCalendarEvent[];
+  calendars: GoogleCalendar[];
+  calendarConfigs: Record<string, CalendarConfig>;
+  peopleDB: Person[];
+  loading: boolean;
+  errorMSG: string | null;
+  isAdmin: boolean;
+  userEmail: string;
+  isNewUser: boolean;
+  handlePrevWeek: () => void;
+  handleNextWeek: () => void;
+  handleToday: () => void;
+  loadEvents: (configsOverride?: Record<string, CalendarConfig>, peopleOverride?: Person[]) => Promise<void>;
+  handleSaveAttendees: (people: Person[]) => Promise<void>;
+  handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
+  persistSettings: (configs: Record<string, CalendarConfig>, people: Person[]) => Promise<void>;
+}
+
+const CalendarContext = createContext<CalendarContextType | null>(null);
+
+export function useCalendarContext() {
+  const context = useContext(CalendarContext);
+  if (!context) {
+    throw new Error('useCalendarContext must be used within a CalendarProvider');
+  }
+  return context;
+}
+
+interface CalendarProviderProps {
+  children: ReactNode;
+  sessionToken: string | null;
+}
+
+export function CalendarProvider({ children, sessionToken }: CalendarProviderProps) {
   const [currentDate, setCurrentDate] = useState<Date>(() => {
     const savedDate = localStorage.getItem('selected_date');
     return savedDate ? new Date(savedDate) : new Date();
@@ -213,7 +248,7 @@ export function useCalendarData(sessionToken: string | null) {
     await loadEvents(newConfigs, peopleDB);
   };
 
-  return {
+  const value = {
     currentDate,
     events,
     calendars,
@@ -223,13 +258,19 @@ export function useCalendarData(sessionToken: string | null) {
     errorMSG,
     isAdmin,
     userEmail,
+    isNewUser,
     handlePrevWeek,
     handleNextWeek,
     handleToday,
     loadEvents,
     handleSaveAttendees,
     handleSaveCalendars,
-    persistSettings,
-    isNewUser
+    persistSettings
   };
+
+  return (
+    <CalendarContext.Provider value={value}>
+      {children}
+    </CalendarContext.Provider>
+  );
 }

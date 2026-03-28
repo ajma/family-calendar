@@ -13,10 +13,11 @@ vi.mock('../services/backend', () => ({
     fetchEvents: vi.fn(),
 }));
 
-// Mock the useCalendarData hook
+// Mock the CalendarContext hook
 const mockUseCalendarData = vi.fn();
-vi.mock('../hooks/useCalendarData', () => ({
-    useCalendarData: () => mockUseCalendarData()
+vi.mock('../context/CalendarContext', () => ({
+    CalendarProvider: ({ children }: any) => <>{children}</>,
+    useCalendarContext: () => mockUseCalendarData()
 }));
 
 const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (

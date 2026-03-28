@@ -1,30 +1,43 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CalendarHeader from '../CalendarHeader';
 
-describe('CalendarHeader', () => {
-    it('renders correctly with current date in the same month', () => {
-        // March 10, 2026 is Tuesday. Monday = March 9, Sunday = March 15
-        const date = new Date('2026-03-10T12:00:00.000Z');
-        render(<CalendarHeader currentDate={date} onPrev={vi.fn()} onNext={vi.fn()} onToday={vi.fn()} onRefresh={vi.fn()} prevRef={{ current: null }} nextRef={{ current: null }} />);
+const mockUseCalendarContext = vi.fn();
+vi.mock('../../context/CalendarContext', () => ({
+    useCalendarContext: () => mockUseCalendarContext()
+}));
 
+describe('CalendarHeader', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const defaultProps = {
+        sessionToken: 'fake',
+        hasRefreshToken: true,
+        login: vi.fn(),
+        togglePresentationMode: vi.fn(),
+    } as any;
+
+    it('renders correctly with current date in the same month', () => {
+        const date = new Date('2026-03-10T12:00:00.000Z');
+        mockUseCalendarContext.mockReturnValue({ currentDate: date });
+        render(<CalendarHeader {...defaultProps} />);
         expect(screen.getByText('March 9-15, 2026')).toBeInTheDocument();
     });
 
     it('renders correctly across month boundary', () => {
-        // Feb 26, 2026 is Thursday. Monday = Feb 23, Sunday = Mar 1
         const date = new Date('2026-02-26T12:00:00.000Z');
-        render(<CalendarHeader currentDate={date} onPrev={vi.fn()} onNext={vi.fn()} onToday={vi.fn()} onRefresh={vi.fn()} prevRef={{ current: null }} nextRef={{ current: null }} />);
-
+        mockUseCalendarContext.mockReturnValue({ currentDate: date });
+        render(<CalendarHeader {...defaultProps} />);
         expect(screen.getByText('Feb 23 - Mar 1, 2026')).toBeInTheDocument();
     });
 
     it('renders correctly across year boundary', () => {
-        // Jan 1, 2026 is Thursday. Monday = Dec 29, 2025, Sunday = Jan 4, 2026
         const date = new Date('2026-01-01T12:00:00.000Z');
-        render(<CalendarHeader currentDate={date} onPrev={vi.fn()} onNext={vi.fn()} onToday={vi.fn()} onRefresh={vi.fn()} prevRef={{ current: null }} nextRef={{ current: null }} />);
-
+        mockUseCalendarContext.mockReturnValue({ currentDate: date });
+        render(<CalendarHeader {...defaultProps} />);
         expect(screen.getByText('Dec 29, 2025 - Jan 4, 2026')).toBeInTheDocument();
     });
 
@@ -35,17 +48,15 @@ describe('CalendarHeader', () => {
         const onRefresh = vi.fn();
         const date = new Date('2026-03-10T12:00:00.000Z');
 
-        const { getByLabelText, getByText } = render(
-            <CalendarHeader
-                currentDate={date}
-                onPrev={onPrev}
-                onNext={onNext}
-                onToday={onToday}
-                onRefresh={onRefresh}
-                prevRef={{ current: null }}
-                nextRef={{ current: null }}
-            />
-        );
+        mockUseCalendarContext.mockReturnValue({
+            currentDate: date,
+            handleNextWeek: onNext,
+            handlePrevWeek: onPrev,
+            handleToday: onToday,
+            loadEvents: onRefresh
+        });
+
+        const { getByLabelText, getByText } = render(<CalendarHeader {...defaultProps} />);
 
         fireEvent.click(getByLabelText('Next Week'));
         expect(onNext).toHaveBeenCalledOnce();

@@ -11,9 +11,10 @@ vi.mock('../services/backend', () => ({
     saveSettings: vi.fn(),
 }));
 
-// Mock the hooks to avoid actual data fetching
-vi.mock('../hooks/useCalendarData', () => ({
-    useCalendarData: () => ({
+// Mock the context to avoid actual data fetching
+vi.mock('../context/CalendarContext', () => ({
+    CalendarProvider: ({ children }: any) => <>{children}</>,
+    useCalendarContext: () => ({
         currentDate: new Date('2026-03-09T12:00:00Z'),
         events: [],
         calendars: [],
@@ -23,12 +24,14 @@ vi.mock('../hooks/useCalendarData', () => ({
         errorMSG: null,
         isAdmin: true,
         userEmail: 'test@example.com',
+        isNewUser: false,
         handlePrevWeek: vi.fn(),
         handleNextWeek: vi.fn(),
         handleToday: vi.fn(),
         loadEvents: vi.fn(),
         handleSaveAttendees: vi.fn(),
         handleSaveCalendars: vi.fn(),
+        persistSettings: vi.fn()
     })
 }));
 

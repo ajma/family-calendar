@@ -34,8 +34,10 @@ export const resetSettings = async (token: string): Promise<SuccessResponse> =>
 /**
  * Check the current authentication status (supports Cloudflare Access).
  */
-export const checkAuthStatus = async (): Promise<AuthExchangeResponse & { hasRefreshToken: boolean }> =>
-    apiClient<AuthExchangeResponse & { hasRefreshToken: boolean }>('/api/auth/status');
+export const checkAuthStatus = async (token?: string | null): Promise<AuthExchangeResponse & { hasRefreshToken: boolean }> =>
+    apiClient<AuthExchangeResponse & { hasRefreshToken: boolean }>('/api/auth/status', {
+        headers: token ? authHeader(token) : {}
+    });
 
 /**
  * Exchange a one-time Google authorization code for a local session token.

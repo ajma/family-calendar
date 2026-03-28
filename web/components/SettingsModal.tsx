@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { AVATAR_ICON_COLORS } from '../constants';
 import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
+import { useCalendarContext } from '../context/CalendarContext';
 
 interface LocalPerson extends Person {
   _id: string;
@@ -11,12 +12,6 @@ interface LocalPerson extends Person {
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  calendars: GoogleCalendar[];
-  calendarConfigs: Record<string, CalendarConfig>;
-  people: Person[];
-  userEmail: string;
-  isAdmin: boolean;
-  onSave: (configs: CalendarConfig[], people: Person[]) => void;
   onLogout: () => void;
   onFullReset: () => void;
   initialTab?: string;
@@ -25,16 +20,12 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
   isOpen, 
   onClose, 
-  calendars = [], 
-  calendarConfigs = {}, 
-  people = [], 
-  userEmail = '',
-  isAdmin = false,
-  onSave, 
   onLogout,
   onFullReset,
   initialTab = 'calendars'
 }) => {
+  const { calendars, calendarConfigs, peopleDB: people, userEmail, isAdmin, persistSettings } = useCalendarContext();
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [localConfigs, setLocalConfigs] = useState<Record<string, CalendarConfig>>({});
   const [localPeople, setLocalPeople] = useState<LocalPerson[]>([]);
@@ -241,21 +232,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleSaveAndSwitch = () => {
+  const handleSaveAndSwitch = async () => {
     if (pendingTabSwitch) {
-      const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
-      const configsToSave = Object.entries(localConfigs).map(([id, config]) => {
-        const { summary, primary, ...rest } = config as any; 
-        return { ...rest, id } as CalendarConfig;
-      });
-      onSave(configsToSave, peopleToSave);
-      
-      if (pendingTabSwitch === '__CLOSE__') {
-        onClose();
-      } else {
-        setActiveTab(pendingTabSwitch);
+      setIsSaving(true);
+      try {
+        const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
+        const configsRecord: Record<string, CalendarConfig> = {};
+        Object.entries(localConfigs).forEach(([id, config]) => {
+          const { summary, primary, ...rest } = config as any;
+          configsRecord[id] = rest as CalendarConfig;
+        });
+        
+        await persistSettings(configsRecord, peopleToSave);
+        
+        if (pendingTabSwitch === '__CLOSE__') {
+          onClose();
+        } else {
+          setActiveTab(pendingTabSwitch);
+        }
+        setPendingTabSwitch(null);
+        setIsDirty(false);
+      } finally {
+        setIsSaving(false);
       }
-      setPendingTabSwitch(null);
     }
   };
 
@@ -270,9 +269,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <h3>Unsaved Changes</h3>
           <p>You have unsaved changes in the <strong>{activeTab}</strong> tab. What would you like to do before {isClosing ? 'exiting' : 'switching'}?</p>
           <div className="tab-guard-actions">
-            <button onClick={handleDiscardAndSwitch} className="btn-secondary" style={{ color: '#ff7b72', borderColor: '#ff7b72' }}>Discard & {actionLabel}</button>
-            <button onClick={handleSaveAndSwitch} className="btn-primary">Save & {actionLabel}</button>
-            <button onClick={() => setPendingTabSwitch(null)} className="btn-secondary">Keep Editing</button>
+            <button onClick={handleDiscardAndSwitch} disabled={isSaving} className="btn-secondary" style={{ color: '#ff7b72', borderColor: '#ff7b72' }}>Discard & {actionLabel}</button>
+            <button onClick={handleSaveAndSwitch} disabled={isSaving} className="btn-primary">{isSaving ? 'Saving...' : `Save & ${actionLabel}`}</button>
+            <button onClick={() => setPendingTabSwitch(null)} disabled={isSaving} className="btn-secondary">Keep Editing</button>
           </div>
         </div>
       </div>
@@ -284,21 +283,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       <button 
         onClick={handleSaveAll} 
         className="btn-primary" 
-        disabled={!isDirty}
-        style={{ opacity: isDirty ? 1 : 0.5, cursor: isDirty ? 'pointer' : 'not-allowed', padding: '0.6rem 1.5rem' }}
+        disabled={!isDirty || isSaving}
+        style={{ opacity: (isDirty && !isSaving) ? 1 : 0.5, cursor: (isDirty && !isSaving) ? 'pointer' : 'not-allowed', padding: '0.6rem 1.5rem' }}
       >
-        Save
+        {isSaving ? 'Saving...' : 'Save'}
       </button>
     </div>
   );
 
-  const handleSaveAll = () => {
-    const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
-    const configsToSave = Object.entries(localConfigs).map(([id, config]) => {
-      const { summary, primary, ...rest } = config as any; 
-      return { ...rest, id } as CalendarConfig;
-    });
-    onSave(configsToSave, peopleToSave);
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const peopleToSave = localPeople.map(({ _id, ...rest }) => rest);
+      const configsRecord: Record<string, CalendarConfig> = {};
+      Object.entries(localConfigs).forEach(([id, config]) => {
+        const { summary, primary, ...rest } = config as any;
+        configsRecord[id] = rest as CalendarConfig;
+      });
+      await persistSettings(configsRecord, peopleToSave);
+      setIsDirty(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Calendar Handlers

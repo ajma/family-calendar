@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import App from '../App';
 
 // Mock Google Login
@@ -12,6 +12,7 @@ vi.mock('@react-oauth/google', () => ({
 
 // Mock backend services
 vi.mock('../services/backend', () => ({
+    checkAuthStatus: vi.fn().mockResolvedValue({ session_token: 'fake-token', hasRefreshToken: true }),
     fetchSettings: vi.fn().mockResolvedValue({
         calendarConfigs: {
             'cal1': { selected: true, emoji: '📅' }
@@ -24,20 +25,7 @@ vi.mock('../services/backend', () => ({
     resetSettings: vi.fn(),
     exchangeCode: vi.fn(),
     fetchCalendars: vi.fn().mockResolvedValue([{ id: 'cal1', primary: true, summary: 'Primary' }]),
-    fetchEvents: vi.fn().mockResolvedValue([
-        { 
-            id: '1', 
-            summary: 'Event 1', 
-            start: { dateTime: '2026-03-13T10:00:00Z' }, 
-            end: { dateTime: '2026-03-13T11:00:00Z' } 
-        },
-        { 
-            id: '2', 
-            summary: 'Event 2', 
-            start: { dateTime: '2026-03-13T12:00:00Z' }, 
-            end: { dateTime: '2026-03-13T13:00:00Z' } 
-        }
-    ]),
+    fetchEvents: vi.fn(),
 }));
 
 describe('Presentation Mode', () => {
@@ -47,6 +35,13 @@ describe('Presentation Mode', () => {
     });
 
     it('toggles presentation mode and reveals events sequentially', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const { fetchEvents } = await import('../services/backend');
+        vi.mocked(fetchEvents).mockResolvedValue([
+            { id: '1', summary: 'Event 1', start: { dateTime: `${today}T10:00:00Z` }, end: { dateTime: `${today}T11:00:00Z` } },
+            { id: '2', summary: 'Event 2', start: { dateTime: `${today}T12:00:00Z` }, end: { dateTime: `${today}T13:00:00Z` } }
+        ]);
+        
         localStorage.setItem('session_token', 'fake-token');
         
         await act(async () => {
@@ -111,19 +106,21 @@ describe('Presentation Mode', () => {
     });
 
     it('reveals all-day events before timed events on the same day', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().split('T')[0];
         const { fetchEvents } = await import('../services/backend');
         vi.mocked(fetchEvents).mockResolvedValue([
             { 
                 id: 'allday', 
                 summary: 'All Day Event', 
-                start: { date: '2026-03-13' }, 
-                end: { date: '2026-03-14' } 
+                start: { date: today }, 
+                end: { date: tomorrow } 
             },
             { 
                 id: 'timed', 
                 summary: 'Timed Event', 
-                start: { dateTime: '2026-03-13T20:00:00Z' }, 
-                end: { dateTime: '2026-03-13T21:00:00Z' } 
+                start: { dateTime: `${today}T20:00:00Z` }, 
+                end: { dateTime: `${today}T21:00:00Z` } 
             }
         ]);
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCalendarContext } from '../context/CalendarContext';
 
 // Icons as simple SVG to avoid extra dependencies for now
 const ChevronLeft = () => (
@@ -21,16 +22,12 @@ const RefreshIcon = () => (
 );
 
 interface CalendarHeaderProps {
-  currentDate: Date;
-  onPrev: () => void;
-  onNext: () => void;
-  onToday: () => void;
-  onRefresh: () => void;
   prevRef: React.RefObject<HTMLButtonElement | null>;
   nextRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-const CalendarHeader: React.FC<CalendarHeaderProps> = ({ currentDate, onPrev, onNext, onToday, onRefresh, prevRef, nextRef }) => {
+const CalendarHeader: React.FC<CalendarHeaderProps> = ({ prevRef, nextRef }) => {
+  const { currentDate, handlePrevWeek, handleNextWeek, handleToday, loadEvents } = useCalendarContext();
   // Compute start (Monday) and end (Sunday) of the week
   const dayOfWeek = currentDate.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -63,14 +60,14 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({ currentDate, onPrev, on
   return (
     <div className="calendar-controls">
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <button onClick={onToday} className="control-btn glass">This Week</button>
-        <button onClick={onRefresh} className="control-btn glass" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Refresh Calendar" title="Refresh Calendar">
+        <button onClick={handleToday} className="control-btn glass">This Week</button>
+        <button onClick={() => loadEvents()} className="control-btn glass" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Refresh Calendar" title="Refresh Calendar">
           <RefreshIcon />
         </button>
       </div>
       <div className="nav-group glass">
-        <button ref={prevRef} onClick={onPrev} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
-        <button ref={nextRef} onClick={onNext} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>
+        <button ref={prevRef} onClick={handlePrevWeek} className="icon-btn" aria-label="Previous Week"><ChevronLeft /></button>
+        <button ref={nextRef} onClick={handleNextWeek} className="icon-btn" aria-label="Next Week"><ChevronRight /></button>
       </div>
       <h2 className="current-month">{dateRangeStr}</h2>
     </div>

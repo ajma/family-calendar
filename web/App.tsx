@@ -5,10 +5,10 @@ import WeekGrid from './components/WeekGrid';
 import SettingsModal from './components/SettingsModal';
 import PresentationControls from './components/PresentationControls';
 import { usePresentationMode } from './hooks/usePresentationMode';
-import { useCalendarData } from './hooks/useCalendarData';
+import { CalendarProvider, useCalendarContext } from './context/CalendarContext';
 import { exchangeCode, resetSettings, checkAuthStatus } from './services/backend';
 import { filterHiddenAttendees } from './utils/annotateEnrichment';
-import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
+import { GoogleCalendarEvent } from 'common/types';
 
 // Modular Styles
 import './index.css';
@@ -27,38 +27,28 @@ const VIEWS = {
 
 type ViewType = typeof VIEWS[keyof typeof VIEWS];
 
-function App() {
-  const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('session_token') || null);
-  const [hasRefreshToken, setHasRefreshToken] = useState<boolean>(true); 
-  const [errorMSG, setErrorMSG] = useState<string | null>(null);
+interface AppContentProps {
+  sessionToken: string | null;
+  hasRefreshToken: boolean;
+  errorMSG: string | null;
+  setErrorMSG: (msg: string | null) => void;
+  login: () => void;
+  logout: () => void;
+  handleFullReset: () => void;
+}
+
+function AppContent({ sessionToken, hasRefreshToken, errorMSG, setErrorMSG, login, logout, handleFullReset }: AppContentProps) {
   const [view, setView] = useState<ViewType>(VIEWS.MAIN);
   const [settingsTab, setSettingsTab] = useState<string>('calendars');
 
-  // Bootstrap session from Cloudflare or existing token
-  useEffect(() => {
-    const bootstrap = async () => {
-      try {
-        const status = await checkAuthStatus();
-        if (status.session_token) {
-          setSessionToken(status.session_token);
-          localStorage.setItem('session_token', status.session_token);
-          setHasRefreshToken(status.hasRefreshToken);
-          
-          if (!status.hasRefreshToken) {
-            setErrorMSG('Connected via Cloudflare, but Google Calendar access is not yet authorized. Please Sign In below.');
-          }
-        } else {
-          setHasRefreshToken(false);
-          setSessionToken(null);
-          localStorage.removeItem('session_token');
-        }
-      } catch (e) {
-        // Not authenticated via any method or session expired
-        setHasRefreshToken(false);
-      }
-    };
-    bootstrap();
-  }, []);
+  const {
+    currentDate,
+    events,
+    peopleDB,
+    loading,
+    errorMSG: dataError,
+    isNewUser
+  } = useCalendarContext();
 
   // Dynamic View Helper
   const isView = (target: ViewType) => view === target;
@@ -70,45 +60,6 @@ function App() {
   const helpBtnRef = useRef<HTMLButtonElement | null>(null);
   const presentationPrevRef = useRef<HTMLButtonElement | null>(null);
   const presentationNextRef = useRef<HTMLButtonElement | null>(null);
-
-  // Core Data Logic Hook
-  const {
-    currentDate,
-    events,
-    calendars,
-    calendarConfigs,
-    peopleDB,
-    loading,
-    errorMSG: dataError,
-    isAdmin,
-    userEmail,
-    handlePrevWeek,
-    handleNextWeek,
-    handleToday,
-    loadEvents,
-    handleSaveAttendees,
-    handleSaveCalendars,
-    persistSettings,
-    isNewUser
-  }: {
-    currentDate: Date;
-    events: GoogleCalendarEvent[];
-    calendars: GoogleCalendar[];
-    calendarConfigs: Record<string, CalendarConfig>;
-    peopleDB: Person[];
-    loading: boolean;
-    errorMSG: string | null;
-    isAdmin: boolean;
-    userEmail: string;
-    handlePrevWeek: () => void;
-    handleNextWeek: () => void;
-    handleToday: () => void;
-    loadEvents: (configs?: Record<string, CalendarConfig>, people?: Person[]) => Promise<void>;
-    handleSaveAttendees: (people: Person[]) => Promise<void>;
-    handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
-    persistSettings: (configs: Record<string, CalendarConfig>, people: Person[]) => Promise<void>;
-    isNewUser: boolean;
-  } = useCalendarData(sessionToken);
 
   // Presentation Mode Logic Hook
   const {
@@ -124,45 +75,7 @@ function App() {
   // Sync data errors to main error state
   useEffect(() => {
     if (dataError) setErrorMSG(dataError);
-  }, [dataError]);
-
-  const login = useGoogleLogin({
-    flow: 'auth-code',
-    onSuccess: async (codeResponse) => {
-      try {
-        const { session_token } = await exchangeCode(codeResponse.code);
-        setSessionToken(session_token);
-        localStorage.setItem('session_token', session_token);
-        setHasRefreshToken(true);
-        setErrorMSG(null);
-      } catch (e) {
-        console.error('Token exchange failed', e);
-        setErrorMSG('Login failed. Please try again.');
-      }
-    },
-    onError: (error) => {
-      console.error('Login Failed', error);
-      setErrorMSG('Login failed. Please try again.');
-    },
-    scope: 'https://www.googleapis.com/auth/calendar.readonly',
-  });
-
-  const logout = () => {
-    googleLogout();
-    setSessionToken(null);
-    localStorage.clear();
-    window.location.reload(); // Hard reset for clean state
-  };
-
-  // Sync session expiry
-  useEffect(() => {
-    const handleUnauthorized = () => {
-      logout();
-      setErrorMSG('Your session expired. Please sign in again.');
-    };
-    window.addEventListener('api-unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
-  }, []);
+  }, [dataError, setErrorMSG]);
 
   // First-time Onboarding Auto-popup
   useEffect(() => {
@@ -209,32 +122,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view]); // Depend on view to re-bind with correct helper results
-
-  const handleFullReset = async () => {
-    if (sessionToken) await resetSettings(sessionToken);
-    
-    // Preserve session token but clear other local data to simulate "first login"
-    const token = localStorage.getItem('session_token');
-    localStorage.clear();
-    if (token) localStorage.setItem('session_token', token);
-    
-    window.location.reload();
-  };
-
-  const handleSettingsSave = async (newConfigs: CalendarConfig[], newPeople: Person[]) => {
-    // Convert array to record for handleSaveCalendars
-    const configRecord: Record<string, CalendarConfig> = {};
-    newConfigs.forEach(c => { 
-      if (c.id) {
-        const { summary, primary, ...rest } = c as any;
-        configRecord[c.id] = rest as CalendarConfig;
-      } 
-    });
-    
-    await persistSettings(configRecord, newPeople);
-    await loadEvents(configRecord, newPeople);
-  };
+  }, [view]);
 
   return (
     <>
@@ -244,11 +132,6 @@ function App() {
 
           {sessionToken && !isView(VIEWS.PRESENTATION) && (
             <CalendarHeader
-              currentDate={currentDate}
-              onPrev={handlePrevWeek}
-              onNext={handleNextWeek}
-              onToday={handleToday}
-              onRefresh={loadEvents}
               prevRef={prevWeekRef}
               nextRef={nextWeekRef}
             />
@@ -347,12 +230,6 @@ function App() {
           <SettingsModal
             isOpen={isView(VIEWS.SETTINGS)}
             onClose={() => setView(VIEWS.MAIN)}
-            calendars={calendars}
-            calendarConfigs={calendarConfigs}
-            people={peopleDB}
-            userEmail={userEmail}
-            isAdmin={isAdmin}
-            onSave={handleSettingsSave}
             onLogout={logout}
             onFullReset={handleFullReset}
             initialTab={settingsTab}
@@ -363,6 +240,103 @@ function App() {
         v{import.meta.env.PACKAGE_VERSION}
       </footer>
     </>
+  );
+}
+
+function App() {
+  const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('session_token') || null);
+  const [hasRefreshToken, setHasRefreshToken] = useState<boolean>(true); 
+  const [errorMSG, setErrorMSG] = useState<string | null>(null);
+
+  // Bootstrap session from Cloudflare or existing token
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const status = await checkAuthStatus(sessionToken);
+        if (status.session_token) {
+          setSessionToken(status.session_token);
+          localStorage.setItem('session_token', status.session_token);
+          setHasRefreshToken(status.hasRefreshToken);
+          
+          if (!status.hasRefreshToken) {
+            setErrorMSG('Connected via Cloudflare, but Google Calendar access is not yet authorized. Please Sign In below.');
+          }
+        } else {
+          setHasRefreshToken(false);
+          setSessionToken(null);
+          localStorage.removeItem('session_token');
+        }
+      } catch (e) {
+        // Not authenticated via any method or session expired
+        setHasRefreshToken(false);
+      }
+    };
+    bootstrap();
+  }, []);
+
+  const login = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      try {
+        const { session_token } = await exchangeCode(codeResponse.code);
+        if (session_token) {
+          setSessionToken(session_token);
+          localStorage.setItem('session_token', session_token);
+          setHasRefreshToken(true);
+          setErrorMSG(null);
+        }
+      } catch (e) {
+        console.error('Token exchange failed', e);
+        setErrorMSG('Login failed. Please try again.');
+      }
+    },
+    onError: (error) => {
+      console.error('Login Failed', error);
+      setErrorMSG('Login failed. Please try again.');
+    },
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
+  });
+
+  const logout = () => {
+    googleLogout();
+    setSessionToken(null);
+    localStorage.clear();
+    window.location.reload(); // Hard reset for clean state
+  };
+
+  // Sync session expiry
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      setErrorMSG('Your session expired. Please sign in again.');
+    };
+    window.addEventListener('api-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('api-unauthorized', handleUnauthorized);
+  }, []);
+
+  const handleFullReset = async () => {
+    if (sessionToken) await resetSettings(sessionToken as string);
+    
+    // Preserve session token but clear other local data to simulate "first login"
+    const token = localStorage.getItem('session_token');
+    localStorage.clear();
+    if (token) localStorage.setItem('session_token', token);
+    
+    window.location.reload();
+  };
+
+  return (
+    <CalendarProvider sessionToken={sessionToken}>
+      <AppContent 
+        sessionToken={sessionToken}
+        hasRefreshToken={hasRefreshToken}
+        errorMSG={errorMSG}
+        setErrorMSG={setErrorMSG}
+        login={login}
+        logout={logout}
+        handleFullReset={handleFullReset}
+      />
+    </CalendarProvider>
   );
 }
 
