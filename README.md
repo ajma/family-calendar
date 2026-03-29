@@ -16,8 +16,8 @@ Family Calendar is a premium web application that allows you to seamlessly unify
 - **Smart Filtering:** Automatically discards events marked as `private` or events that contain the hashtag `#ignore` in their description.
 - **Family Events:** Add `#allfamily` to an event description to automatically flag every configured person in your system as an attendee.
 - **Multi-Theme Support:** Choose from multiple built-in themes (e.g., Light, Playful) in the Settings menu to customize the look and feel of your calendar.
-- **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct state manipulation. Only visible to the configured `ADMIN_EMAIL`. Changes are synced safely to the backend database.
-- **Admin Full Reset:** An admin can wipe the entire configuration database directly from the Debug Panel.
+- **Hidden Debug Panel:** The Settings modal includes a **Debug** tab for direct state manipulation. Only visible to the configured `ADMIN_EMAIL`. Changes are synced safely to the backend database.
+- **Admin Full Reset:** An admin can wipe the entire configuration database directly from the **Debug** tab in Settings.
 
 ## Technology Stack
 
@@ -101,14 +101,14 @@ Run `docker compose up -d` to start the application. Note that the image must be
 ## Usage Guide
 
 1. Click **Sign in with Google** on the top right.
-2. Once authenticated, click the **Select Calendars** button.
-3. Check the boxes for whichever calendars you want visible.
-4. To **auto-assign** people, use the multi-select chips next to a calendar name. You can assign any number of people to a single calendar.
-5. Hit Apply to enjoy your synced weekly calendar view!
+2. Once authenticated, click the **⚙️ Settings** button in the header.
+3. In the **Calendars** tab, check the boxes for whichever calendars you want visible.
+4. To **auto-assign** people, use the configuration section next to a calendar name. You can assign any number of people to a single calendar.
+5. Save your changes to enjoy your synced weekly calendar view!
 6. Click the event title directly to open the event in **Google Calendar**.
 7. Use the **Eye Icon** in the header to enter **Event Edit Mode**. Click the circle indicators on any event to toggle its visibility.
 8. Go to **Settings > Appearance** to switch between different **UI Themes**.
-9. Use the **Edit Attendees** to rename or recolor attendees dynamically.
+9. Use the **Attendees** tab in Settings to rename or recolor attendees dynamically.
 10. Click the **▶ Present** button to enter Presentation Mode. Step through events one by one using the on-screen controls or your **Arrow Keys** (←/→). Hit **Escape** or click **⏹ End** to return to the normal view.
 
 ## Testing
