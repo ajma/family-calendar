@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { annotateEvents, filterHiddenAttendees, buildEmailMap, normalizeAttendees } from '../annotateEnrichment';
+import { annotateEvents, filterHiddenAttendees, buildEmailMap, normalizeAttendees, cleanupHiddenEvents } from '../annotateEnrichment';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -192,5 +192,47 @@ describe('filterHiddenAttendees', () => {
     const events = [makeEvent()];
     const [result] = filterHiddenAttendees(events, [ALICE]);
     expect((result as any).attendees).toBeUndefined();
+  });
+});
+
+// ─── cleanupHiddenEvents ──────────────────────────────────────────────────────
+
+describe('cleanupHiddenEvents', () => {
+  it('removes events that expired more than N months ago', () => {
+    const now = new Date();
+    const oldDate = new Date();
+    oldDate.setMonth(now.getMonth() - 7); // 7 months ago (expired)
+    const freshDate = new Date();
+    freshDate.setMonth(now.getMonth() - 1); // 1 month ago (not expired)
+
+    const configs = {
+      'cal-1': {
+        hiddenEvents: [
+          { id: 'old-evt', expiry: oldDate.toISOString() },
+          { id: 'fresh-evt', expiry: freshDate.toISOString() }
+        ]
+      }
+    } as any;
+
+    const result = cleanupHiddenEvents(configs, 6);
+    expect(result['cal-1'].hiddenEvents).toHaveLength(1);
+    expect((result['cal-1'].hiddenEvents![0] as any).id).toBe('fresh-evt');
+  });
+
+  it('keeps legacy string IDs (backwards compatibility)', () => {
+    const configs = {
+      'cal-1': {
+        hiddenEvents: ['legacy-id']
+      }
+    } as any;
+
+    const result = cleanupHiddenEvents(configs, 6);
+    expect(result['cal-1'].hiddenEvents).toContain('legacy-id');
+  });
+
+  it('returns the exact same object if no changes are made (pure function optimization)', () => {
+    const configs = { 'cal-1': { hiddenEvents: [] } } as any;
+    const result = cleanupHiddenEvents(configs, 6);
+    expect(result).toBe(configs);
   });
 });

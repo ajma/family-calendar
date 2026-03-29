@@ -114,6 +114,7 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 - `#allfamily`: Case-insensitive (`#ALLFAMILY` works the same way).
 - `#allfamily`: Does not add duplicates if a person is already an attendee.
 - Leaves events without `#allfamily` untouched.
+- **Universal Visibility**: Verified that an event is marked `_hidden` if its ID exists in *any* selected calendar's `hiddenEvents` list.
 - Does not mutate the original event objects.
 
 #### `filterHiddenAttendees`
@@ -148,8 +149,8 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
     - Renders a checkbox for each calendar.
     - Sorting: Lists calendars alphabetically.
     - Emoji Picker: Toggles picker visibility; verifies emoji selection/removal.
-    - Auto-Assignment: Confirms that people can be associated with specific calendars.
-- **Attendees Tab**:
+    - **Multi-Person Auto-Assignment**: Confirms that multiple people can be associated with a single calendar via chip-based multi-select.
+- **Attendee Tab**:
     - CRUD: Allows editing names, emails, and colors.
     - Initials Logic: Automatically generates 2-letter uppercase initials.
     - **Merging**: Verifies that merging one person into another deletes the source and adds their email to `alternateEmails`.
@@ -193,9 +194,14 @@ Tests for the pure `annotateEvents` and `filterHiddenAttendees` utilities.
 ### `web/components/__tests__/EventCard.test.tsx`
 
 - Renders the event summary.
+- **Clickable Title**: Verifies the title links directly to the Google Calendar URL.
 - Shows "Untitled Event" when summary is missing.
 - **Calculates a smaller font size** for very long titles to ensure visibility without truncation.
 - Shows "All Day" when the event has no `start.dateTime`.
+- **Event Visibility Toggles**:
+    - Verifies that a green circle (SolidCircleIcon) appears when visible.
+    - Verifies that an empty circle (EmptyCircleIcon) appears when marked as hidden.
+    - Confirms clicking the toggle calls `toggleHiddenEvent` with correct parameters.
 - **Multiday Time Display**:
     - Shows full range for same-day events.
     - Day 1: Shows `start time →` (e.g. `10:00 PM →`).

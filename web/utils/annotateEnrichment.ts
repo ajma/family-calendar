@@ -1,4 +1,6 @@
-import { Person, CalendarConfig, GoogleCalendarEvent, Attendee } from 'common/types';
+import { Person, CalendarConfig, GoogleCalendarEvent, Attendee, HiddenEvent } from 'common/types';
+
+export const HIDDEN_EVENT_RETENTION_MONTHS = 6;
 
 /**
  * Pure utility functions for annotating and filtering calendar events.
@@ -61,7 +63,9 @@ export function annotateEvents(events: GoogleCalendarEvent[], calendarConfigs: R
     const calendarEmoji = config.emoji;
     
     // Check universally if this event ID is hidden in ANY calendar's config to deduplicate
-    const isHidden = Object.values(calendarConfigs).some(c => c.hiddenEvents?.includes(event.id));
+    const isHidden = Object.values(calendarConfigs).some(c => 
+      c.hiddenEvents?.some(item => (typeof item === 'string' ? item : item.id) === event.id)
+    );
 
     let updatedEvent = { ...event };
     
@@ -143,4 +147,32 @@ export function filterHiddenAttendees(events: GoogleCalendarEvent[], people: Per
     
     return { ...event, attendees: normalizedAttendees };
   });
+}
+
+/**
+ * Prunes hidden event entries from calendar configurations if they have expired.
+ */
+export function cleanupHiddenEvents(configs: Record<string, CalendarConfig>, retentionMonths: number = HIDDEN_EVENT_RETENTION_MONTHS): Record<string, CalendarConfig> {
+  const newConfigs = { ...configs };
+  let modified = false;
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - retentionMonths);
+
+  Object.keys(newConfigs).forEach(calId => {
+    const config = newConfigs[calId];
+    if (config.hiddenEvents && config.hiddenEvents.length > 0) {
+      const originalCount = config.hiddenEvents.length;
+      const filtered = config.hiddenEvents.filter(item => {
+        if (typeof item === 'string') return true; 
+        const expiryDate = new Date(item.expiry);
+        return expiryDate > cutoffDate;
+      });
+      
+      if (filtered.length !== originalCount) {
+        newConfigs[calId] = { ...config, hiddenEvents: filtered };
+        modified = true;
+      }
+    }
+  });
+  return modified ? newConfigs : configs;
 }

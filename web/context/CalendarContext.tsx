@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
 import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
-import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person, Appearance } from '../../common/types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person, Appearance, HiddenEvent } from '../../common/types';
+
+const HIDDEN_EVENT_RETENTION_MONTHS = 6;
 
 interface CalendarContextType {
   currentDate: Date;
@@ -26,7 +28,7 @@ interface CalendarContextType {
   persistSettings: (configs: Record<string, CalendarConfig>, people: Person[], appSettings?: Appearance) => Promise<void>;
   isEventEditMode: boolean;
   setIsEventEditMode: (val: boolean) => void;
-  toggleHiddenEvent: (eventId: string, eventCalendarId: string, hide: boolean) => Promise<void>;
+  toggleHiddenEvent: (event: GoogleCalendarEvent, hide: boolean) => Promise<void>;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
@@ -103,10 +105,17 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
         
         // Mark as loaded before calling other effects
         setIsNewUser(!!settings.isNewUser);
+        
+        // Dynamic cleanup of old hidden events
+        const prunedConfigs = cleanupHiddenEvents(finalConfigs);
+        if (JSON.stringify(prunedConfigs) !== JSON.stringify(finalConfigs)) {
+          persistSettings(prunedConfigs, finalPeople, settings.appearance).catch(e => console.error(e));
+        }
+
         setSettingsLoaded(true);
         
         // Pass fresh data into initial loads to avoid race with local state
-        loadEvents(finalConfigs, finalPeople, true);
+        loadEvents(prunedConfigs, finalPeople, true);
       } catch (e) {
         console.error('Failed to load settings from DB', e);
         setSettingsLoaded(true);
@@ -267,27 +276,57 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
     await loadEvents(calendarConfigs, updatedPeople);
   };
 
+  const handleSaveEvents = async (updatedEvents: GoogleCalendarEvent[]) => {
+    setEvents(updatedEvents);
+  };
+
+  const cleanupHiddenEvents = (configs: Record<string, CalendarConfig>): Record<string, CalendarConfig> => {
+    const newConfigs = { ...configs };
+    let modified = false;
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - HIDDEN_EVENT_RETENTION_MONTHS);
+
+    Object.keys(newConfigs).forEach(calId => {
+      const config = newConfigs[calId];
+      if (config.hiddenEvents && config.hiddenEvents.length > 0) {
+        const originalCount = config.hiddenEvents.length;
+        const filtered = config.hiddenEvents.filter(item => {
+          if (typeof item === 'string') return true; // Keep legacy strings for now, or expire them? Let's keep for one cycle.
+          const expiryDate = new Date(item.expiry);
+          return expiryDate > cutoffDate;
+        });
+        
+        if (filtered.length !== originalCount) {
+          newConfigs[calId] = { ...config, hiddenEvents: filtered };
+          modified = true;
+        }
+      }
+    });
+    return modified ? newConfigs : configs;
+  };
+
   const handleSaveCalendars = async (newConfigs: Record<string, CalendarConfig>) => {
     await persistSettings(newConfigs, peopleDB);
     await loadEvents(newConfigs, peopleDB);
   };
 
-  const toggleHiddenEvent = async (eventId: string, eventCalendarId: string, hide: boolean) => {
-    const targetCalendarId = eventCalendarId || Object.keys(calendarConfigs).find(k => calendarConfigs[k].selected) || '';
+  const toggleHiddenEvent = async (event: GoogleCalendarEvent, hide: boolean) => {
+    const targetCalendarId = event._calendarId || Object.keys(calendarConfigs).find(k => calendarConfigs[k].selected) || '';
     if (!targetCalendarId) return;
 
     const currentConfig = calendarConfigs[targetCalendarId] || { id: targetCalendarId };
     const currentHidden = currentConfig.hiddenEvents || [];
+    const eventEndDate = event.end.dateTime || event.end.date || new Date().toISOString();
     
-    let newHidden: string[];
+    let newHidden: (string | HiddenEvent)[];
     if (hide) {
-      if (!currentHidden.includes(eventId)) {
-        newHidden = [...currentHidden, eventId];
+      if (!currentHidden.some(item => (typeof item === 'string' ? item : item.id) === event.id)) {
+        newHidden = [...currentHidden, { id: event.id, expiry: eventEndDate }];
       } else {
         newHidden = currentHidden;
       }
     } else {
-      newHidden = currentHidden.filter(id => id !== eventId);
+      newHidden = currentHidden.filter(item => (typeof item === 'string' ? item : item.id) !== event.id);
     }
 
     const newConfigs = {

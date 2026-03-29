@@ -107,7 +107,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, currentDay }) => {
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            toggleHiddenEvent(event.id, event._calendarId || '', !event._hidden);
+            toggleHiddenEvent(event, !event._hidden);
           }}
           title={event._hidden ? "Show event" : "Hide event"}
         >

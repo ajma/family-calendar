@@ -38,13 +38,18 @@ export interface Appearance {
   theme?: string;
 }
 
+export interface HiddenEvent {
+  id: string;
+  expiry: string; // ISO end date of the event
+}
+
 export interface CalendarConfig {
   id: string;
   selected?: boolean;
   emoji?: string | null;
   hashtag?: string;
   assignments?: string[];
-  hiddenEvents?: string[];
+  hiddenEvents?: (string | HiddenEvent)[];
 }
 
 export interface Person {

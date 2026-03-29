@@ -8,11 +8,14 @@ Family Calendar is a premium web application that allows you to seamlessly unify
 - **OAuth 2.0 Google Integration:** Securely sign in with your Google account. The app requests readonly access to your calendar list and events.
 - **Multi-Calendar Support:** Select any number of calendars (Personal, Work, Family, etc.) you want to view simultaneously. Events from all selected calendars are merged into a single timeline.
 - **Cross-Calendar Deduplication:** If the same event was shared across multiple calendars, CalendarSync will intelligently merge them together and present it as one event, preventing duplicated clutter.
-- **Auto-Attendee Linking:** Assign each calendar a specific 'Person' from your local database. When CalendarSync downloads an event from that calendar, it will automatically stamp that person as an attendee!
+- **Multi-Person Auto-Assignment:** Assign a calendar to multiple people (e.g., Mom and Dad). CalendarSync will automatically stamp all assigned people as attendees for any event on that calendar.
+- **Individual Event Hiding:** Hide specific events from your view without deleting them from Google. Toggle **Event Edit Mode** to manage visibility with clean circle indicators.
+- **Automatic Cleanup:** To stay lean, hidden events are automatically pruned from the system 6 months after they end.
 - **Attendee Editor:** Not happy with randomly assigned display names or colors? Use the custom Attendee Editor to tweak user display names, their two-letter initials, and their specific unique UI color palette.
 - **Persistent Settings:** Your calendar selections and custom attendees are saved to a localized SQLite database, meaning your setup is restored exactly as you left it every time you log in with your Google Account.
 - **Smart Filtering:** Automatically discards events marked as `private` or events that contain the hashtag `#ignore` in their description.
 - **Family Events:** Add `#allfamily` to an event description to automatically flag every configured person in your system as an attendee.
+- **Multi-Theme Support:** Choose from multiple built-in themes (e.g., Light, Playful) in the Settings menu to customize the look and feel of your calendar.
 - **Hidden Debug Panel:** Append `?debug=1` to the URL to reveal a secret debug menu for direct state manipulation. Only visible to the configured `ADMIN_EMAIL`. Changes are synced safely to the backend database.
 - **Admin Full Reset:** An admin can wipe the entire configuration database directly from the Debug Panel.
 
@@ -100,10 +103,13 @@ Run `docker compose up -d` to start the application. Note that the image must be
 1. Click **Sign in with Google** on the top right.
 2. Once authenticated, click the **Select Calendars** button.
 3. Check the boxes for whichever calendars you want visible.
-4. If you have custom attendee profiles, you can use the dropdown next to a calendar name to **auto-assign** that person to all events from that calendar.
-5. Hit Apply, and enjoy your synced weekly calendar view!
-6. Use the **Edit Attendees** to rename or recolor attendees dynamically.
-7. Click the **▶ Present** button to enter Presentation Mode. Step through events one by one using the on-screen controls or your **Arrow Keys** (←/→). Hit **Escape** or click **⏹ End** to return to the normal view.
+4. To **auto-assign** people, use the multi-select chips next to a calendar name. You can assign any number of people to a single calendar.
+5. Hit Apply to enjoy your synced weekly calendar view!
+6. Click the event title directly to open the event in **Google Calendar**.
+7. Use the **Eye Icon** in the header to enter **Event Edit Mode**. Click the circle indicators on any event to toggle its visibility.
+8. Go to **Settings > Appearance** to switch between different **UI Themes**.
+9. Use the **Edit Attendees** to rename or recolor attendees dynamically.
+10. Click the **▶ Present** button to enter Presentation Mode. Step through events one by one using the on-screen controls or your **Arrow Keys** (←/→). Hit **Escape** or click **⏹ End** to return to the normal view.
 
 ## Testing
 
