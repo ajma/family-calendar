@@ -27,10 +27,14 @@ export interface GoogleCalendarEvent {
   };
   attendees?: Attendee[];
   colorId?: string;
-  visibility?: 'public' | 'private' | 'default';
+  visibility?: "public" | "private" | "default";
   status?: string;
   htmlLink?: string;
   _calendarId?: string;
+}
+
+export interface Appearance {
+  theme?: string;
 }
 
 export interface CalendarConfig {
@@ -57,6 +61,7 @@ export interface Person {
 
 export interface UserSettingsResponse {
   email: string;
+  appearance: Appearance;
   calendarConfigs: Record<string, CalendarConfig>;
   people: Person[];
   isAdmin: boolean;

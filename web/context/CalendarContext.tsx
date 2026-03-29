@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
 import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
-import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
+import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person, Appearance } from '../../common/types';
 
 interface CalendarContextType {
   currentDate: Date;
@@ -15,13 +15,15 @@ interface CalendarContextType {
   isAdmin: boolean;
   userEmail: string;
   isNewUser: boolean;
+  appearance: Appearance;
+  setAppearance: (appearance: Appearance) => void;
   handlePrevWeek: () => void;
   handleNextWeek: () => void;
   handleToday: () => void;
   loadEvents: (configsOverride?: Record<string, CalendarConfig>, peopleOverride?: Person[]) => Promise<void>;
   handleSaveAttendees: (people: Person[]) => Promise<void>;
   handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
-  persistSettings: (configs: Record<string, CalendarConfig>, people: Person[]) => Promise<void>;
+  persistSettings: (configs: Record<string, CalendarConfig>, people: Person[], appSettings?: Appearance) => Promise<void>;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
@@ -65,6 +67,10 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
   });
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState(localStorage.getItem('user_email') || '');
+  const [appearance, setAppearanceState] = useState<Appearance>(() => {
+    const local = localStorage.getItem('appearance');
+    return local ? JSON.parse(local) : { theme: 'light' };
+  });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
 
@@ -105,16 +111,30 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
     loadUserData();
   }, [sessionToken]);
 
-  const persistSettings = async (configs: Record<string, CalendarConfig>, people: Person[]) => {
+  // Sync theme to DOM
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appearance.theme || 'light');
+  }, [appearance]);
+
+  const setAppearance = (newAppearance: Appearance) => {
+    setAppearanceState(newAppearance);
+    persistSettings(calendarConfigs, peopleDB, newAppearance).catch(e => console.error(e));
+  };
+
+  const persistSettings = async (configs: Record<string, CalendarConfig>, people: Person[], appSettings: Appearance = appearance) => {
     localStorage.setItem('calendar_configs', JSON.stringify(configs));
     localStorage.setItem('people', JSON.stringify(people));
+    if (appSettings) {
+      localStorage.setItem('appearance', JSON.stringify(appSettings));
+    }
     
     // Update local state immediately so UI refreshes correctly
     setCalendarConfigs(configs);
     setPeopleDB(people);
+    if (appSettings) setAppearanceState(appSettings);
 
     if (sessionToken) {
-      await saveSettings(sessionToken, configs, people);
+      await saveSettings(sessionToken, configs, people, appSettings);
     }
   };
 
@@ -259,6 +279,8 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
     isAdmin,
     userEmail,
     isNewUser,
+    appearance,
+    setAppearance,
     handlePrevWeek,
     handleNextWeek,
     handleToday,

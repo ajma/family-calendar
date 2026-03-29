@@ -1,5 +1,5 @@
-import { Request } from 'express';
-import { CalendarConfig, Person } from '../common/types';
+import { Request } from "express";
+import { CalendarConfig, Person, Appearance } from "../common/types";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -10,6 +10,7 @@ export interface AuthenticatedRequest extends Request {
 export interface UserSettings {
   calendarConfigs: Record<string, CalendarConfig>;
   people: Person[];
+  appearance: Appearance;
 }
 
 export interface StoredTokens {

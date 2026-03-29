@@ -2,9 +2,9 @@
 
 .event-card {
   padding: 0.6rem 0.6rem 0.6rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  border: var(--border-thin);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition:
@@ -38,7 +38,7 @@
 .event-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(0, 0, 0, 0.15);
+  border-color: var(--event-hover-border);
 }
 
 .event-card:hover::before {
@@ -73,8 +73,8 @@
 .attendee-avatar {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  border: 2px solid var(--surface-color);
+  border-radius: var(--radius-round);
+  border: var(--border-thick);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,12 +96,12 @@
   z-index: 20 !important;
 }
 
-.attendee-overflow {
+.attendee-avatar-more {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--surface-hover);
-  border: 2px solid var(--surface-color);
+  border: var(--border-thick);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,7 +290,7 @@
   width: 90%;
   max-width: 500px;
   max-height: 85vh;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-md);
@@ -299,7 +299,7 @@
 
 .modal-content h2 {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-thin);
   margin: 0;
   font-size: 1.25rem;
 }
@@ -332,8 +332,8 @@
 
 .form-group input[type="text"] {
   padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
   background: var(--bg-color);
   color: var(--text-primary);
   font-family: inherit;
@@ -351,22 +351,22 @@
   color: white;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-primary:hover {
-  background: #0056b3;
+  background: var(--btn-primary-hover);
 }
 
 .btn-secondary {
   background: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: var(--border-thin);
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);

@@ -3,7 +3,7 @@
 .app-container {
   max-width: 1600px;
   margin: 1.5rem auto;
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-md);
   height: calc(100vh - 3rem);
@@ -12,9 +12,9 @@
 }
 
 .app-header {
-  padding: 1.5rem 2rem;
+  padding: 0.8rem 1.5rem;
   background: var(--header-gradient);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--border-thin);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -42,8 +42,8 @@
 
 .control-btn {
   padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  border: var(--border-thin);
   background: var(--surface-color-light);
   color: var(--text-primary);
   font-weight: 500;
@@ -58,9 +58,9 @@
 
 .nav-group {
   display: flex;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border-color);
+  border: var(--border-thin);
 }
 
 .icon-btn {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { AVATAR_ICON_COLORS } from '../constants';
 import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person } from 'common/types';
+import lightThumb from '../styles/themes/light/thumbnail.jpg';
 import { useCalendarContext } from '../context/CalendarContext';
 
 interface LocalPerson extends Person {
@@ -24,7 +25,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onFullReset,
   initialTab = 'calendars'
 }) => {
-  const { calendars, calendarConfigs, peopleDB: people, userEmail, isAdmin, persistSettings } = useCalendarContext();
+  const { appearance, setAppearance, calendars, calendarConfigs, peopleDB: people, userEmail, isAdmin, persistSettings } = useCalendarContext();
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [localConfigs, setLocalConfigs] = useState<Record<string, CalendarConfig>>({});
@@ -438,6 +439,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="settings-sidebar">
             <button className={`settings-tab-btn ${activeTab === 'calendars' ? 'active' : ''}`} onClick={() => handleTabChange('calendars')}>📅 Calendars</button>
             <button className={`settings-tab-btn ${activeTab === 'attendees' ? 'active' : ''}`} onClick={() => handleTabChange('attendees')}>👥 Attendees</button>
+            <button className={`settings-tab-btn ${activeTab === 'appearance' ? 'active' : ''}`} onClick={() => handleTabChange('appearance')}>✨ Appearance</button>
             <button className={`settings-tab-btn ${activeTab === 'guide' ? 'active' : ''}`} onClick={() => handleTabChange('guide')}>❓ User Guide</button>
             <button className={`settings-tab-btn ${activeTab === 'account' ? 'active' : ''}`} onClick={() => handleTabChange('account')}>👤 Account</button>
             {isAdmin && <button className={`settings-tab-btn ${activeTab === 'debug' ? 'active' : ''}`} onClick={() => handleTabChange('debug')}>🐛 Debug</button>}
@@ -605,6 +607,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   ))}
                 </div>
                 {renderStickyActions()}
+              </div>
+            )}
+
+            {activeTab === 'appearance' && (
+              <div className="settings-tab-content">
+                <div className="settings-section-title">Appearance</div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                  Choose a visual style for the application. Themes apply immediately across all devices.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  
+                  {/* Light Theme Card */}
+                  <div 
+                    onClick={() => setAppearance({ ...appearance, theme: 'light' })}
+                    style={{
+                      border: appearance?.theme === 'light' || !appearance?.theme ? '2px solid var(--accent-blue)' : '2px solid var(--border-color)',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      cursor: 'pointer',
+                      background: 'var(--surface-color)',
+                      boxShadow: appearance?.theme === 'light' || !appearance?.theme ? '0 0 0 4px rgba(9, 105, 218, 0.2)' : 'var(--shadow-sm)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: '1rem' }}>Soft Light (Default)</div>
+                    <img 
+                      src={lightThumb} 
+                      alt="Light Theme Preview" 
+                      style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)' }} 
+                    />
+                  </div>
+
+                </div>
               </div>
             )}
 
