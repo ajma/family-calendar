@@ -87,7 +87,22 @@ const EventCard: React.FC<EventCardProps> = ({ event, currentDay }) => {
     <div className="event-card glass">
       <div className="event-card-border" style={borderIndicatorStyle}></div>
       <div className="event-time">{timeString}</div>
-      <h3 className="event-title" style={{ fontSize: dynamicFontSize }}>{summary}</h3>
+      <h3 className="event-title" style={{ fontSize: dynamicFontSize }}>
+        {event.htmlLink ? (
+          <a
+            href={event.htmlLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="event-title-link"
+            onClick={(e) => e.stopPropagation()}
+            title="Open in Google Calendar"
+          >
+            {summary}
+          </a>
+        ) : (
+          summary
+        )}
+      </h3>
 
       {attendees.length > 0 && (
         <div className="event-attendees">
