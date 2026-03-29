@@ -1,7 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import EventCard from '../EventCard';
+
+vi.mock('../../context/CalendarContext', () => ({
+  useCalendarContext: () => ({
+    isEventEditMode: false,
+    toggleHiddenEvent: vi.fn(),
+  }),
+}));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

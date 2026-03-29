@@ -1,5 +1,18 @@
 import React from 'react';
 import AttendeeAvatar, { getAttendeeColor } from './AttendeeAvatar';
+import { useCalendarContext } from '../context/CalendarContext';
+
+const SolidCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
+const EmptyCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
 
 const formatTime = (isoString: string | undefined) => {
   if (!isoString) return '';
@@ -15,6 +28,8 @@ interface EventCardProps {
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event, currentDay }) => {
+  const { isEventEditMode, toggleHiddenEvent } = useCalendarContext();
+
   // Helpers for multiday logic
   const isAllDay = !!event.start.date;
   
@@ -84,8 +99,21 @@ const EventCard: React.FC<EventCardProps> = ({ event, currentDay }) => {
     : '0.9rem';
 
   return (
-    <div className="event-card glass">
+    <div className={`event-card glass ${event._hidden ? 'hidden-event' : ''}`}>
       <div className="event-card-border" style={borderIndicatorStyle}></div>
+      {isEventEditMode && (
+        <button
+          className={`event-visibility-toggle ${event._hidden ? 'hidden-icon' : 'visible-icon'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleHiddenEvent(event.id, event._calendarId || '', !event._hidden);
+          }}
+          title={event._hidden ? "Show event" : "Hide event"}
+        >
+          {event._hidden ? <EmptyCircleIcon /> : <SolidCircleIcon />}
+        </button>
+      )}
       <div className="event-time">{timeString}</div>
       <h3 className="event-title" style={{ fontSize: dynamicFontSize }}>
         {event.htmlLink ? (

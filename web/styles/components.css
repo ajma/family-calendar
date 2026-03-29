@@ -61,6 +61,44 @@
   font-weight: 500;
 }
 
+.hidden-event {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+.event-visibility-toggle {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  padding: 0.3rem;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.visible-icon {
+  color: var(--accent-blue);
+}
+
+.visible-icon:hover {
+  background: var(--surface-hover);
+}
+
+.hidden-icon {
+  color: var(--text-secondary);
+}
+
+.hidden-icon:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
 .event-title {
   font-size: 0.9rem;
   font-weight: 600;

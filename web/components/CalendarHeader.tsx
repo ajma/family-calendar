@@ -2,6 +2,12 @@ import React from 'react';
 import { useCalendarContext } from '../context/CalendarContext';
 
 // Icons as simple SVG to avoid extra dependencies for now
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m15 18-6-6 6-6" />
@@ -27,7 +33,7 @@ interface CalendarHeaderProps {
 }
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({ prevRef, nextRef }) => {
-  const { currentDate, handlePrevWeek, handleNextWeek, handleToday, loadEvents } = useCalendarContext();
+  const { currentDate, handlePrevWeek, handleNextWeek, handleToday, loadEvents, isEventEditMode, setIsEventEditMode } = useCalendarContext();
   // Compute start (Monday) and end (Sunday) of the week
   const dayOfWeek = currentDate.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -63,6 +69,21 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({ prevRef, nextRef }) => 
         <button onClick={handleToday} className="control-btn glass">This Week</button>
         <button onClick={() => loadEvents()} className="control-btn glass" style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Refresh Calendar" title="Refresh Calendar">
           <RefreshIcon />
+        </button>
+        <button 
+          onClick={() => setIsEventEditMode(!isEventEditMode)} 
+          className="control-btn glass" 
+          style={{ 
+            padding: '0.4rem 0.6rem', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: isEventEditMode ? 'var(--accent-blue)' : 'inherit', 
+            border: isEventEditMode ? '1px solid var(--accent-blue)' : undefined 
+          }}
+          title="Toggle Event Edit Mode"
+        >
+          <EyeIcon />
         </button>
       </div>
       <div className="nav-group glass">

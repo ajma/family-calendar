@@ -31,6 +31,7 @@ export interface GoogleCalendarEvent {
   status?: string;
   htmlLink?: string;
   _calendarId?: string;
+  _hidden?: boolean;
 }
 
 export interface Appearance {
@@ -43,6 +44,7 @@ export interface CalendarConfig {
   emoji?: string | null;
   hashtag?: string;
   assignments?: string[];
+  hiddenEvents?: string[];
 }
 
 export interface Person {

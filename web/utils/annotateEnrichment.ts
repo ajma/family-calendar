@@ -59,8 +59,15 @@ export function annotateEvents(events: GoogleCalendarEvent[], calendarConfigs: R
     const config = calendarConfigs[event._calendarId || ''] || {};
     const assignedEmails = config.assignments || [];
     const calendarEmoji = config.emoji;
+    
+    // Check universally if this event ID is hidden in ANY calendar's config to deduplicate
+    const isHidden = Object.values(calendarConfigs).some(c => c.hiddenEvents?.includes(event.id));
 
     let updatedEvent = { ...event };
+    
+    if (isHidden) {
+      updatedEvent._hidden = true;
+    }
 
     // Normalize and deduplicate attendees using alternateEmails
     if (updatedEvent.attendees) {

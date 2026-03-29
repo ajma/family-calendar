@@ -1,7 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import DayColumn from '../DayColumn';
+
+vi.mock('../../context/CalendarContext', () => ({
+  useCalendarContext: () => ({
+    isEventEditMode: false,
+    toggleHiddenEvent: vi.fn(),
+  }),
+}));
 import { GoogleCalendarEvent } from 'common/types';
 
 describe('DayColumn', () => {

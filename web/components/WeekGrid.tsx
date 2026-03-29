@@ -1,5 +1,6 @@
 import React from 'react';
 import DayColumn from './DayColumn';
+import { useCalendarContext } from '../context/CalendarContext';
 
 import { GoogleCalendarEvent } from 'common/types';
 
@@ -9,6 +10,8 @@ interface WeekGridProps {
 }
 
 const WeekGrid: React.FC<WeekGridProps> = ({ currentDate, events }) => {
+  const { isEventEditMode } = useCalendarContext();
+
   // Calculate the start of the week (Monday)
   const startOfWeek = new Date(currentDate);
   const day = startOfWeek.getDay();
@@ -34,7 +37,9 @@ const WeekGrid: React.FC<WeekGridProps> = ({ currentDate, events }) => {
     // using YYYY-MM-DD as key
     const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     
-    eventsByDay[dayStr] = events.filter(event => {
+    const visibleEvents = isEventEditMode ? events : events.filter(e => !e._hidden);
+
+    eventsByDay[dayStr] = visibleEvents.filter(event => {
       if (event.start.date && event.end.date) {
         // All-day event: use string comparison for safety.
         // Google end dates are exclusive, so we check dayStr < end.date

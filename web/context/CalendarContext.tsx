@@ -24,6 +24,9 @@ interface CalendarContextType {
   handleSaveAttendees: (people: Person[]) => Promise<void>;
   handleSaveCalendars: (configs: Record<string, CalendarConfig>) => Promise<void>;
   persistSettings: (configs: Record<string, CalendarConfig>, people: Person[], appSettings?: Appearance) => Promise<void>;
+  isEventEditMode: boolean;
+  setIsEventEditMode: (val: boolean) => void;
+  toggleHiddenEvent: (eventId: string, eventCalendarId: string, hide: boolean) => Promise<void>;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
@@ -73,6 +76,7 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
   });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [isEventEditMode, setIsEventEditMode] = useState(false);
 
   // Load initial settings
   useEffect(() => {
@@ -268,6 +272,37 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
     await loadEvents(newConfigs, peopleDB);
   };
 
+  const toggleHiddenEvent = async (eventId: string, eventCalendarId: string, hide: boolean) => {
+    const targetCalendarId = eventCalendarId || Object.keys(calendarConfigs).find(k => calendarConfigs[k].selected) || '';
+    if (!targetCalendarId) return;
+
+    const currentConfig = calendarConfigs[targetCalendarId] || { id: targetCalendarId };
+    const currentHidden = currentConfig.hiddenEvents || [];
+    
+    let newHidden: string[];
+    if (hide) {
+      if (!currentHidden.includes(eventId)) {
+        newHidden = [...currentHidden, eventId];
+      } else {
+        newHidden = currentHidden;
+      }
+    } else {
+      newHidden = currentHidden.filter(id => id !== eventId);
+    }
+
+    const newConfigs = {
+      ...calendarConfigs,
+      [targetCalendarId]: {
+        ...currentConfig,
+        hiddenEvents: newHidden
+      }
+    };
+    
+    setCalendarConfigs(newConfigs);
+    // Don't await full loadEvents to keep UI snappy, just persist
+    await persistSettings(newConfigs, peopleDB);
+  };
+
   const value = {
     currentDate,
     events,
@@ -287,7 +322,10 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
     loadEvents,
     handleSaveAttendees,
     handleSaveCalendars,
-    persistSettings
+    persistSettings,
+    isEventEditMode,
+    setIsEventEditMode,
+    toggleHiddenEvent
   };
 
   return (
