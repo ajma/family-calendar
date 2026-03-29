@@ -42,7 +42,7 @@ export interface CalendarConfig {
   selected?: boolean;
   emoji?: string | null;
   hashtag?: string;
-  assignment?: string;
+  assignments?: string[];
 }
 
 export interface Person {

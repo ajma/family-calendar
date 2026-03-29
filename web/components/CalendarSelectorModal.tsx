@@ -71,7 +71,7 @@ const CalendarSelectorModal: React.FC<CalendarSelectorModalProps> = ({ isOpen, o
       if (!isSelected) {
         const personMatch = people.find(p => p.email === calendarId);
         if (personMatch) {
-          updatedConfigs[calendarId] = { ...updatedConfigs[calendarId], assignment: personMatch.email };
+          updatedConfigs[calendarId] = { ...updatedConfigs[calendarId], assignments: [personMatch.email] };
         }
       }
 
@@ -79,7 +79,7 @@ const CalendarSelectorModal: React.FC<CalendarSelectorModalProps> = ({ isOpen, o
     });
   };
 
-  const handleConfigChange = (calendarId: string, field: string, value: string | boolean | null) => {
+  const handleConfigChange = (calendarId: string, field: string, value: any) => {
     setLocalConfigs(prev => {
       const currentConfig = prev[calendarId] || {};
       const updatedConfig = { ...currentConfig } as CalendarConfig & Record<string, unknown>;
@@ -201,28 +201,59 @@ const CalendarSelectorModal: React.FC<CalendarSelectorModalProps> = ({ isOpen, o
                             <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>
                               Auto Assign To
                             </label>
-                            <select
-                              value={localConfigs[cal.id]?.assignment || ''}
-                              onChange={(e) => handleConfigChange(cal.id, 'assignment', e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '0.4rem 0.5rem',
-                                borderRadius: '6px',
-                                border: '1px solid var(--border-color)',
-                                background: 'var(--bg-color)',
-                                color: 'var(--text-primary)',
-                                fontSize: '0.85rem',
-                                height: '34px',
-                                outline: 'none'
-                              }}
-                            >
-                              <option value="">-- No Auto Attendee --</option>
-                              {people.map(p => (
-                                <option key={p.email} value={p.email}>
-                                  {p.name || p.email}
-                                </option>
-                              ))}
-                            </select>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              {(() => {
+                                const config = localConfigs[cal.id] || {};
+                                const currentAssignments = config.assignments || [];
+                                return (
+                                  <>
+                                    {currentAssignments.map(email => {
+                                      const personMatch = people.find(p => p.email === email);
+                                      return (
+                                        <div key={email} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.2rem 0.5rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '0.85rem' }}>
+                                          <span>{personMatch?.name || email}</span>
+                                          <button 
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0 0.2rem' }} 
+                                            onClick={() => {
+                                              const newAssignments = currentAssignments.filter(e => e !== email);
+                                              handleConfigChange(cal.id, 'assignments', newAssignments);
+                                            }}
+                                            title="Remove"
+                                          >&times;</button>
+                                        </div>
+                                      );
+                                    })}
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        if (!e.target.value) return;
+                                        if (!currentAssignments.includes(e.target.value)) {
+                                          handleConfigChange(cal.id, 'assignments', [...currentAssignments, e.target.value]);
+                                        }
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '0.4rem 0.5rem',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border-color)',
+                                        background: 'var(--bg-color)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.85rem',
+                                        height: '34px',
+                                        outline: 'none'
+                                      }}
+                                    >
+                                      <option value="">+ Add Person...</option>
+                                      {people.map(p => (
+                                        <option key={p.email} value={p.email}>
+                                          {p.name || p.email}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </div>
 
                           {/* Hashtag Filter Group */}

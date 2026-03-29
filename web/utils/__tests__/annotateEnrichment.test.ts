@@ -76,24 +76,33 @@ describe('annotateEvents', () => {
   describe('auto-attendee assignment', () => {
     it('adds the assigned person as an attendee when they are not already present', () => {
       const events = [makeEvent()];
-      const configs = { 'cal-work': { assignment: ALICE.email } } as any;
+      const configs = { 'cal-work': { assignments: [ALICE.email] } } as any;
       const [result] = annotateEvents(events, configs, [ALICE]);
       expect((result as any).attendees).toHaveLength(1);
       expect((result as any).attendees[0].email).toBe(ALICE.email);
       expect((result as any).attendees[0].responseStatus).toBe('accepted');
     });
 
+    it('adds multiple assigned people to an event', () => {
+      const events = [makeEvent()];
+      const configs = { 'cal-work': { assignments: [ALICE.email, BOB.email] } } as any;
+      const [result] = annotateEvents(events, configs, [ALICE, BOB]);
+      expect((result as any).attendees).toHaveLength(2);
+      expect((result as any).attendees[0].email).toBe(ALICE.email);
+      expect((result as any).attendees[1].email).toBe(BOB.email);
+    });
+
     it('does not add the assigned person as a duplicate if already an attendee', () => {
       const existing = { email: ALICE.email, displayName: 'Alice', responseStatus: 'accepted' };
       const events = [makeEvent({ attendees: [existing] })];
-      const configs = { 'cal-work': { assignment: ALICE.email } } as any;
+      const configs = { 'cal-work': { assignments: [ALICE.email] } } as any;
       const [result] = annotateEvents(events, configs, [ALICE]);
       expect(result.attendees).toHaveLength(1);
     });
 
     it('does nothing if the assigned email does not match any person in peopleDB', () => {
       const events = [makeEvent()];
-      const configs = { 'cal-work': { assignment: 'ghost@example.com' } } as any as any;
+      const configs = { 'cal-work': { assignments: ['ghost@example.com'] } } as any as any;
       const [result] = annotateEvents(events, configs, [ALICE]);
       expect((result as any).attendees).toBeUndefined();
     });

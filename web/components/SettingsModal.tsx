@@ -318,13 +318,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       };
       if (!isSelected) {
         const match = localPeople.find(p => p.email === calendarId);
-        if (match) updated[calendarId] = { ...updated[calendarId], assignment: match.email };
+        if (match) updated[calendarId] = { ...updated[calendarId], assignments: [match.email] };
       }
       return updated;
     });
   };
 
-  const handleCalendarConfigChange = (calendarId: string, field: keyof CalendarConfig, value: string | boolean | null) => {
+  const handleCalendarConfigChange = (calendarId: string, field: keyof CalendarConfig, value: any) => {
     setLocalConfigs(prev => ({
       ...prev,
       [calendarId]: { ...prev[calendarId], [field]: value }
@@ -475,14 +475,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-color)' }}>
                             <div className="form-group" style={{ flex: 1 }}>
                               <label>Auto-Assign To</label>
-                              <select 
-                                value={localConfigs[cal.id]?.assignment || ''} 
-                                onChange={(e) => handleCalendarConfigChange(cal.id, 'assignment', e.target.value)}
-                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}
-                              >
-                                <option value="">-- None --</option>
-                                {localPeople.map(p => <option key={p.email} value={p.email}>{p.name || p.email}</option>)}
-                              </select>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                {(() => {
+                                  const config = localConfigs[cal.id] || {};
+                                  const currentAssignments = config.assignments || [];
+                                  return (
+                                    <>
+                                      {currentAssignments.map(email => {
+                                        const personMatch = localPeople.find(p => p.email === email);
+                                        return (
+                                          <div key={email} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.2rem 0.5rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '0.85rem' }}>
+                                            <span>{personMatch?.name || email}</span>
+                                            <button 
+                                              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0 0.2rem' }} 
+                                              onClick={() => {
+                                                const newAssignments = currentAssignments.filter(e => e !== email);
+                                                handleCalendarConfigChange(cal.id, 'assignments', newAssignments);
+                                              }}
+                                              title="Remove"
+                                            >&times;</button>
+                                          </div>
+                                        );
+                                      })}
+                                      <select 
+                                        value="" 
+                                        onChange={(e) => {
+                                          if (!e.target.value) return;
+                                          if (!currentAssignments.includes(e.target.value)) {
+                                            handleCalendarConfigChange(cal.id, 'assignments', [...currentAssignments, e.target.value]);
+                                          }
+                                        }}
+                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                      >
+                                        <option value="">+ Add Person...</option>
+                                        {localPeople.map(p => <option key={p.email} value={p.email}>{p.name || p.email}</option>)}
+                                      </select>
+                                    </>
+                                  );
+                                })()}
+                              </div>
                             </div>
                             <div className="form-group" style={{ flex: 1 }}>
                               <label>Hashtag</label>

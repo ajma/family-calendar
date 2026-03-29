@@ -57,7 +57,7 @@ export function annotateEvents(events: GoogleCalendarEvent[], calendarConfigs: R
   const emailMap = buildEmailMap(people);
   return events.map((event: GoogleCalendarEvent) => {
     const config = calendarConfigs[event._calendarId || ''] || {};
-    const assignedEmail = config.assignment;
+    const assignedEmails = config.assignments || [];
     const calendarEmoji = config.emoji;
 
     let updatedEvent = { ...event };
@@ -72,16 +72,22 @@ export function annotateEvents(events: GoogleCalendarEvent[], calendarConfigs: R
       updatedEvent.summary = `${calendarEmoji} ${updatedEvent.summary}`;
     }
 
-    // Auto-assign the calendar's designated person as an attendee
-    if (assignedEmail) {
-      const person = emailMap.get(assignedEmail.toLowerCase());
+    // Auto-assign the calendar's designated people as attendees
+    if (assignedEmails.length > 0) {
       const attendees: Attendee[] = updatedEvent.attendees ? [...updatedEvent.attendees] : [];
-      if (person && !attendees.some(a => a.email && a.email.toLowerCase() === person.email.toLowerCase())) {
-        attendees.push({
-          email: person.email,
-          displayName: person.name || person.email,
-          responseStatus: 'accepted',
-        });
+      let added = false;
+      assignedEmails.forEach(email => {
+        const person = emailMap.get(email.toLowerCase());
+        if (person && !attendees.some(a => a.email && a.email.toLowerCase() === person.email.toLowerCase())) {
+          attendees.push({
+            email: person.email,
+            displayName: person.name || person.email,
+            responseStatus: 'accepted',
+          });
+          added = true;
+        }
+      });
+      if (added || updatedEvent.attendees !== undefined) {
         updatedEvent.attendees = attendees;
       }
     }
