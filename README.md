@@ -26,13 +26,22 @@ Family Calendar is a premium web application that allows you to seamlessly unify
 - **Common:** Shared types (in `common/`)
 - **Database:** SQLite
 - **Styling:** Vanilla CSS
-- **Google API Integration:** `@react-oauth/google` (auth-code flow, server-side proxied)
+- **Google API Integration:** `@react-oauth/google` (auth-code flow with server-side token exchange)
 
 ## Getting Started
 
 ### Prerequisites
 
-You must have a Google Cloud Platform account with the **Google Calendar API** enabled. You'll need to create OAuth 2.0 Client credentials (type: **Web application**) authorized for `http://localhost:5173`.
+You must have a Google Cloud Platform account with the **Google Calendar API** enabled.
+
+#### Google Cloud Console Setup
+
+1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
+2. Create an **OAuth 2.0 Client ID** (Application type: **Web application**).
+3. Under **Authorized JavaScript origins**, add the URL where users will access the app:
+   - For local development: `http://localhost:5173`
+   - For production: your domain (e.g., `https://calendar.example.com`)
+4. Save and note the **Client ID** and **Client Secret** for your `.env` file.
 
 ### Installation
 
@@ -42,6 +51,7 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    npm install
    ```
 3. Create a `.env` file in the root directory (where `package.json` is located) and populate it with your Google credentials:
+
    ```env
    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
    GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
@@ -49,8 +59,18 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
    TOKEN_ENCRYPTION_KEY="[random-64-char-hex-string]"
    JWT_SECRET="[your-random-session-secret]"
    ```
+
    _Note: Use a secure random string for `TOKEN_ENCRYPTION_KEY` and `JWT_SECRET` in production!_
-   Both the Client ID and Client Secret can be found in your [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
+
+   | Variable                  | Description                                                                                                                              |
+   | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+   | `GOOGLE_CLIENT_ID`        | From Google Cloud Console (see above)                                                                                                    |
+   | `GOOGLE_CLIENT_SECRET`    | From Google Cloud Console (see above)                                                                                                    |
+   | `ADMIN_EMAIL`             | Email address granted admin privileges (debug panel, full reset)                                                                         |
+   | `TOKEN_ENCRYPTION_KEY`    | Random 64-character hex string for encrypting stored OAuth tokens                                                                        |
+   | `JWT_SECRET`              | Random string used to sign session JWTs                                                                                                  |
+   | `DISABLE_CLOUDFLARE_AUTH` | Optional. Set to `true` to ignore Cloudflare Access headers. Useful for local development or deployments not behind a Cloudflare tunnel. |
+
 4. Start both the Vite development server and the Express backend concurrently:
    ```bash
    npm run dev
@@ -62,9 +82,11 @@ You must have a Google Cloud Platform account with the **Google Calendar API** e
 To run the application in a production environment without development tools:
 
 1. **Build the application**:
+
    ```bash
    npm run build
    ```
+
    This will compile the frontend into `/dist` and the server into `/dist-server`.
 
 2. **Start the server**:
@@ -97,6 +119,8 @@ services:
 ```
 
 Run `docker compose up -d` to start the application. Note that the image must be built and published to your GitHub Container Registry, or you can build it locally.
+
+> **Cloudflare Tunnel:** If you deploy behind a Cloudflare tunnel with Cloudflare Access, the app will automatically detect the authenticated user from Cloudflare headers. Users still need to click **Sign In with Google** once to grant calendar API access, but subsequent visits will be seamless. Set `DISABLE_CLOUDFLARE_AUTH=true` to opt out of this behavior.
 
 ## Usage Guide
 

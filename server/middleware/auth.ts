@@ -35,6 +35,10 @@ async function identifyUser(req: AuthenticatedRequest): Promise<boolean> {
     }
 
     // 2. Try Cloudflare Access headers (JWT assertion or user email)
+    if (process.env.DISABLE_CLOUDFLARE_AUTH === 'true') {
+        return false;
+    }
+
     const cfJwt = req.headers['cf-access-jwt-assertion'] as string;
     const cfEmail = req.headers['cf-access-authenticated-user-email'] as string;
 
