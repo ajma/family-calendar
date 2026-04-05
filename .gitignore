@@ -16,6 +16,7 @@ dist-ssr
 *.local
 .env
 test-results.xml
+docker-compose.yml
 
 # Editor directories and files
 .vscode/*

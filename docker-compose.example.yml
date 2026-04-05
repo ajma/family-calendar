@@ -1,0 +1,22 @@
+# Docker Compose Configuration for Family Calendar
+# This is an example file. To use it, copy it to `docker-compose.yml`:
+#   cp docker-compose.example.yml docker-compose.yml
+
+services:
+  calendar-app:
+    build: .
+    container_name: family-calendar
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      # Persists the SQLite database in the local ./data directory
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=5173
+      - GOOGLE_CLIENT_ID=<YOUR_GOOGLE_CLIENT_ID>
+      - GOOGLE_CLIENT_SECRET=<YOUR_GOOGLE_CLIENT_SECRET>
+      - ADMIN_EMAIL=<YOUR_ADMIN_EMAIL>
+      - TOKEN_ENCRYPTION_KEY=<YOUR_32_BYTE_HEX_ENCRYPTION_KEY>
+      - JWT_SECRET=<YOUR_JWT_SECRET_KEY>
