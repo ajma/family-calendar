@@ -1,4 +1,4 @@
-import { Person, CalendarConfig, GoogleCalendarEvent, Attendee, HiddenEvent } from 'common/types';
+import { Person, CalendarConfig, GoogleCalendarEvent, Attendee } from 'common/types';
 
 export const HIDDEN_EVENT_RETENTION_MONTHS = 6;
 

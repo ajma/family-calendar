@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { fetchSettings, saveSettings, fetchCalendars, fetchEvents } from '../services/backend';
-import { annotateEvents, buildEmailMap } from '../utils/annotateEnrichment';
+import { annotateEvents, buildEmailMap, cleanupHiddenEvents } from '../utils/annotateEnrichment';
 import { AVATAR_ICON_COLORS } from '../constants';
 import { GoogleCalendarEvent, GoogleCalendar, CalendarConfig, Person, Appearance, HiddenEvent } from '../../common/types';
-
-const HIDDEN_EVENT_RETENTION_MONTHS = 6;
 
 interface CalendarContextType {
   currentDate: Date;
@@ -274,35 +272,6 @@ export function CalendarProvider({ children, sessionToken }: CalendarProviderPro
   const handleSaveAttendees = async (updatedPeople: Person[]) => {
     await persistSettings(calendarConfigs, updatedPeople);
     await loadEvents(calendarConfigs, updatedPeople);
-  };
-
-  const handleSaveEvents = async (updatedEvents: GoogleCalendarEvent[]) => {
-    setEvents(updatedEvents);
-  };
-
-  const cleanupHiddenEvents = (configs: Record<string, CalendarConfig>): Record<string, CalendarConfig> => {
-    const newConfigs = { ...configs };
-    let modified = false;
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - HIDDEN_EVENT_RETENTION_MONTHS);
-
-    Object.keys(newConfigs).forEach(calId => {
-      const config = newConfigs[calId];
-      if (config.hiddenEvents && config.hiddenEvents.length > 0) {
-        const originalCount = config.hiddenEvents.length;
-        const filtered = config.hiddenEvents.filter(item => {
-          if (typeof item === 'string') return true; // Keep legacy strings for now, or expire them? Let's keep for one cycle.
-          const expiryDate = new Date(item.expiry);
-          return expiryDate > cutoffDate;
-        });
-        
-        if (filtered.length !== originalCount) {
-          newConfigs[calId] = { ...config, hiddenEvents: filtered };
-          modified = true;
-        }
-      }
-    });
-    return modified ? newConfigs : configs;
   };
 
   const handleSaveCalendars = async (newConfigs: Record<string, CalendarConfig>) => {

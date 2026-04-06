@@ -84,6 +84,3 @@ export interface SuccessResponse {
   success: boolean;
 }
 
-export interface ErrorResponse {
-  error: string;
-}

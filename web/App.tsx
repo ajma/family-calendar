@@ -57,7 +57,6 @@ function AppContent({ sessionToken, hasRefreshToken, errorMSG, setErrorMSG, logi
   const prevWeekRef = useRef<HTMLButtonElement | null>(null);
   const nextWeekRef = useRef<HTMLButtonElement | null>(null);
   const presentBtnRef = useRef<HTMLButtonElement | null>(null);
-  const helpBtnRef = useRef<HTMLButtonElement | null>(null);
   const presentationPrevRef = useRef<HTMLButtonElement | null>(null);
   const presentationNextRef = useRef<HTMLButtonElement | null>(null);
 
