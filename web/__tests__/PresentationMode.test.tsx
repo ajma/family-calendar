@@ -35,18 +35,32 @@ describe('Presentation Mode', () => {
     });
 
     it('toggles presentation mode and reveals events sequentially', async () => {
-        const today = new Date().toISOString().split('T')[0];
-        const { fetchEvents } = await import('../services/backend');
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { checkAuthStatus, fetchSettings, fetchCalendars, fetchEvents } = await import('../services/backend');
+        vi.mocked(checkAuthStatus).mockResolvedValue({ session_token: 'fake-token', email: null, hasRefreshToken: true });
+        vi.mocked(fetchSettings).mockResolvedValue({
+            email: 'user@example.com',
+            calendarConfigs: { 'cal1': { id: 'cal1', selected: true, emoji: '📅' } },
+            people: [{ email: 'user@example.com', name: 'User', initials: 'U', color: '#2a7be4', show: true }],
+            appearance: { theme: 'light' },
+            isAdmin: false,
+            isNewUser: false,
+        });
+        vi.mocked(fetchCalendars).mockResolvedValue([{ id: 'cal1', primary: true, summary: 'Primary', accessRole: 'owner' }]);
         vi.mocked(fetchEvents).mockResolvedValue([
             { id: '1', summary: 'Event 1', start: { dateTime: `${today}T10:00:00Z` }, end: { dateTime: `${today}T11:00:00Z` } },
             { id: '2', summary: 'Event 2', start: { dateTime: `${today}T12:00:00Z` }, end: { dateTime: `${today}T13:00:00Z` } }
         ]);
         
         localStorage.setItem('session_token', 'fake-token');
-        
+
         await act(async () => {
             render(<App />);
         });
+
+        // Wait for events to finish loading before entering presentation mode
+        await screen.findByText('Event 1');
 
         // 1. Enter Presentation Mode
         const presentBtn = await screen.findByText(/Present/i);
@@ -57,7 +71,7 @@ describe('Presentation Mode', () => {
         // 2. Verify header is simplified (other buttons hidden)
         expect(screen.queryByText(/Settings/i)).not.toBeInTheDocument();
 
-        // 3. Verify no events are shown initially
+        // 3. Verify no events are shown initially (presentation starts with 0 revealed)
         expect(screen.queryByText('Event 1')).not.toBeInTheDocument();
         expect(screen.queryByText('Event 2')).not.toBeInTheDocument();
 
@@ -106,21 +120,34 @@ describe('Presentation Mode', () => {
     });
 
     it('reveals all-day events before timed events on the same day', async () => {
-        const today = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().split('T')[0];
-        const { fetchEvents } = await import('../services/backend');
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const tmrw = new Date(now);
+        tmrw.setDate(tmrw.getDate() + 1);
+        const tomorrow = `${tmrw.getFullYear()}-${String(tmrw.getMonth() + 1).padStart(2, '0')}-${String(tmrw.getDate()).padStart(2, '0')}`;
+        const { checkAuthStatus, fetchSettings, fetchCalendars, fetchEvents } = await import('../services/backend');
+        vi.mocked(checkAuthStatus).mockResolvedValue({ session_token: 'fake-token', email: null, hasRefreshToken: true });
+        vi.mocked(fetchSettings).mockResolvedValue({
+            email: 'user@example.com',
+            calendarConfigs: { 'cal1': { id: 'cal1', selected: true, emoji: '📅' } },
+            people: [{ email: 'user@example.com', name: 'User', initials: 'U', color: '#2a7be4', show: true }],
+            appearance: { theme: 'light' },
+            isAdmin: false,
+            isNewUser: false,
+        });
+        vi.mocked(fetchCalendars).mockResolvedValue([{ id: 'cal1', primary: true, summary: 'Primary', accessRole: 'owner' }]);
         vi.mocked(fetchEvents).mockResolvedValue([
-            { 
-                id: 'allday', 
-                summary: 'All Day Event', 
-                start: { date: today }, 
-                end: { date: tomorrow } 
+            {
+                id: 'allday',
+                summary: 'All Day Event',
+                start: { date: today },
+                end: { date: tomorrow }
             },
-            { 
-                id: 'timed', 
-                summary: 'Timed Event', 
-                start: { dateTime: `${today}T20:00:00Z` }, 
-                end: { dateTime: `${today}T21:00:00Z` } 
+            {
+                id: 'timed',
+                summary: 'Timed Event',
+                start: { dateTime: `${today}T20:00:00Z` },
+                end: { dateTime: `${today}T21:00:00Z` }
             }
         ]);
 
@@ -128,6 +155,9 @@ describe('Presentation Mode', () => {
         await act(async () => {
             render(<App />);
         });
+
+        // Wait for events to finish loading before entering presentation mode
+        await screen.findByText('All Day Event');
 
         // 1. Enter Presentation Mode
         const presentBtn = await screen.findByText(/Present/i);

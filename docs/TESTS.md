@@ -2,7 +2,7 @@
 
 This document outlines the test coverage for the `family-calendar` project. The suite uses **Vitest**, **React Testing Library**, and **Supertest**.
 
-**Total: 93 tests across 11 files.**
+**Total: 109 tests across 12 files.**
 
 To run:
 
@@ -13,6 +13,8 @@ npm run test
 ---
 
 ### `web/__tests__/PresentationMode.test.tsx`
+
+Full integration tests that render the real `App` component with mocked backend services. Each test explicitly sets up all required mocks (`checkAuthStatus`, `fetchSettings`, `fetchCalendars`, `fetchEvents`) and waits for events to load before entering presentation mode.
 
 - **Sequential Reveal**: Verifies that events are hidden initially and appear one by one via "Next" button/Right Arrow.
 - **Header Simplification**: Confirms that other buttons are hidden during presentation.
@@ -32,10 +34,6 @@ npm run test
 ## Backend Tests
 
 ### `server/__tests__/api.test.ts`
-
-#### `GET /api/health`
-
-- Returns `200 { status: 'ok' }`.
 
 #### `POST /api/auth`
 
@@ -57,23 +55,6 @@ npm run test
 - Returns `403` for non-admin users.
 - Wipes all settings when called by the configured `ADMIN_EMAIL`.
 
-#### `GET /api/calendars`
-
-- Returns `401` if local session JWT is invalid.
-- Proxies Google's calendar list response to the client.
-
-#### `GET /api/events`
-
-- Returns `401` if local session JWT is invalid.
-- Proxies Google's event list for selected calendars.
-- **Deduplication**: Merges events shared across multiple calendars.
-- **Filtering**: Discards private and `#ignore` events server-side.
-- **Sorting**: Returns events in chronological order.
-- Handles all-day events (`start.date` only) without crashing.
-- **Graceful degradation**: Still returns events from healthy calendars when one calendar fetch fails.
-- Appends a hashtag `q` query param when the calendar has a hashtag config.
-- Does not append `q` when no hashtag is configured.
-
 #### Settings persistence across logout / login
 
 - **Round-trip**: Saving settings then re-fetching (simulating a fresh login with the same identity) returns the data intact — including nested calendar config fields and all people records.
@@ -83,6 +64,34 @@ npm run test
 
 - **Cached Token**: Does NOT call Google to refresh if the stored token is still valid (based on `token_expiry` with a 5-minute buffer).
 - **Auto-Refresh**: Successfully calls Google to refresh and updates the database if the current token is expired.
+
+---
+
+### `server/__tests__/eventService.test.ts`
+
+Tests for the `processEvents` utility that handles server-side event processing.
+
+#### Deduplication
+
+- Removes duplicate events by ID, keeping the first occurrence.
+- Keeps the first occurrence when the same event appears across multiple calendars.
+
+#### Filtering
+
+- Filters out events with `visibility: 'private'`.
+- Filters out events with `#ignore` in description.
+- Keeps events without a description.
+- Does not filter events with `visibility: 'default'`.
+
+#### Sorting
+
+- Sorts events chronologically by start time.
+- Sorts all-day events before timed events on the same day.
+
+#### Combined Behavior
+
+- Deduplicates, filters, and sorts in one pass.
+- Returns empty array for empty input.
 
 ---
 
