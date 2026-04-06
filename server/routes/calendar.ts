@@ -6,6 +6,7 @@ import { processEvents } from '../services/eventService';
 import { CalendarConfig, GoogleCalendarEvent, GoogleCalendar } from '../../common/types';
 
 const router = express.Router();
+const DEBUG = process.env.DEBUG === 'true';
 
 const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -88,10 +89,10 @@ router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res
             .filter(([, config]) => config.selected)
             .map(([id]) => id);
 
-        console.log(`Server: Fetching events for ${selectedCalendarIds.length} calendars: ${selectedCalendarIds.join(', ')}`);
+        if (DEBUG) console.log(`Fetching events for ${selectedCalendarIds.length} calendars: ${selectedCalendarIds.join(', ')}`);
 
         if (selectedCalendarIds.length === 0) {
-            console.log('Server: No calendars selected, returning empty array.');
+            if (DEBUG) console.log('No calendars selected, returning empty array.');
             return res.json([]);
         }
 
@@ -111,17 +112,17 @@ router.get('/events', authenticateSession, async (req: AuthenticatedRequest, res
             const response = await fetch(url, { headers: { Authorization: `Bearer ${googleToken}` } });
             
             if (!response.ok) {
-                console.warn(`Server: Failed to fetch events for calendar ${calId}. Status: ${response.status}`);
+                if (DEBUG) console.warn(`Failed to fetch events for calendar ${calId}. Status: ${response.status}`);
                 return [];
             }
             const data = await response.json();
-            console.log(`Server: Fetched ${data.items?.length || 0} events for ${calId}`);
+            if (DEBUG) console.log(`Fetched ${data.items?.length || 0} events for ${calId}`);
             return (data.items || []).map((event: GoogleCalendarEvent) => ({ ...event, _calendarId: calId }));
         };
 
         const results = await Promise.all(selectedCalendarIds.map(fetchCalendarEvents));
         const processed: GoogleCalendarEvent[] = processEvents(results.flat());
-        console.log(`Server: Returning ${processed.length} processed events.`);
+        if (DEBUG) console.log(`Returning ${processed.length} processed events.`);
         res.json(processed);
     } catch (error: unknown) {
         const httpErr = error as HttpError;

@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { annotateEvents, filterHiddenAttendees, buildEmailMap, normalizeAttendees, cleanupHiddenEvents } from '../annotateEnrichment';
+import { GoogleCalendarEvent, Person, CalendarConfig, HiddenEvent } from 'common/types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const makeEvent = (overrides = {}) => ({
+const makeEvent = (overrides: Partial<GoogleCalendarEvent> = {}): GoogleCalendarEvent => ({
   id: 'evt-1',
   summary: 'Team Standup',
   _calendarId: 'cal-work',
@@ -12,27 +13,35 @@ const makeEvent = (overrides = {}) => ({
   ...overrides,
 });
 
-const ALICE = { email: 'alice@example.com', name: 'Alice', initials: 'AL', color: '#ff6b6b', show: true };
-const BOB = { email: 'bob@example.com', name: 'Bob', initials: 'BO', color: '#4ecdc4', show: true };
+const makeConfig = (overrides: Partial<CalendarConfig> = {}): CalendarConfig => ({
+  id: 'cal-work',
+  ...overrides,
+});
+
+const ALICE: Person = { email: 'alice@example.com', name: 'Alice', initials: 'AL', color: '#ff6b6b', show: true };
+const BOB: Person = { email: 'bob@example.com', name: 'Bob', initials: 'BO', color: '#4ecdc4', show: true };
 
 // ─── buildEmailMap & normalizeAttendees ───────────────────────────────────────
 
 describe('Attendee Normalization Utilities', () => {
-  const CHARLIE = { 
-    email: 'charlie@primary.com', 
-    name: 'Charlie', 
-    alternateEmails: ['charlie@work.com', 'charlie@home.com'] 
+  const CHARLIE: Person = {
+    email: 'charlie@primary.com',
+    name: 'Charlie',
+    initials: 'CH',
+    color: '#888888',
+    show: true,
+    alternateEmails: ['charlie@work.com', 'charlie@home.com']
   };
 
   it('buildEmailMap maps both primary and alternate emails to the same person', () => {
-    const map = buildEmailMap([CHARLIE as any]);
+    const map = buildEmailMap([CHARLIE]);
     expect(map.get('charlie@primary.com')).toEqual(CHARLIE);
     expect(map.get('charlie@work.com')).toEqual(CHARLIE);
     expect(map.get('charlie@home.com')).toEqual(CHARLIE);
   });
 
   it('normalizeAttendees dedups based on identity and NORMALIZES to primary identity', () => {
-    const emailMap = buildEmailMap([CHARLIE as any]);
+    const emailMap = buildEmailMap([CHARLIE]);
     const attendees = [
       { email: 'charlie@work.com', displayName: 'Charlie Work' },
       { email: 'charlie@home.com', displayName: 'Charlie Home' }, // Should be dropped
@@ -43,9 +52,9 @@ describe('Attendee Normalization Utilities', () => {
     
     expect(result).toHaveLength(2);
     // Verified: First occurrence resolved to primary
-    expect((result as any)[0].email).toBe('charlie@primary.com'); 
-    expect((result as any)[0].displayName).toBe('Charlie');
-    expect((result as any)[1].email).toBe('guest@other.com');
+    expect(result![0].email).toBe('charlie@primary.com');
+    expect(result![0].displayName).toBe('Charlie');
+    expect(result![1].email).toBe('guest@other.com');
   });
 });
 
@@ -55,56 +64,57 @@ describe('annotateEvents', () => {
   describe('emoji prefix', () => {
     it('prepends the calendar emoji to the event summary', () => {
       const events = [makeEvent({ summary: 'Standup' })];
-      const configs = { 'cal-work': { emoji: '💼' } } as any;
+      const configs = { 'cal-work': makeConfig({ emoji: '💼' }) };
       const [result] = annotateEvents(events, configs, []);
-      expect((result as any).summary).toBe('💼 Standup');
+      expect(result.summary).toBe('💼 Standup');
     });
 
     it('does not modify summary when no emoji is configured', () => {
       const events = [makeEvent({ summary: 'Standup' })];
-      const [result] = annotateEvents(events, { 'cal-work': {} } as any, []);
-      expect((result as any).summary).toBe('Standup');
+      const configs = { 'cal-work': makeConfig() };
+      const [result] = annotateEvents(events, configs, []);
+      expect(result.summary).toBe('Standup');
     });
 
     it('does not crash when the event has no summary', () => {
-      const events = [makeEvent({ summary: undefined })];
-      const configs = { 'cal-work': { emoji: '💼' } };
-      expect(() => annotateEvents(events, configs as any, [])).not.toThrow();
+      const events = [makeEvent({ summary: undefined as unknown as string })];
+      const configs = { 'cal-work': makeConfig({ emoji: '💼' }) };
+      expect(() => annotateEvents(events, configs, [])).not.toThrow();
     });
   });
 
   describe('auto-attendee assignment', () => {
     it('adds the assigned person as an attendee when they are not already present', () => {
       const events = [makeEvent()];
-      const configs = { 'cal-work': { assignments: [ALICE.email] } } as any;
+      const configs = { 'cal-work': makeConfig({ assignments: [ALICE.email] }) };
       const [result] = annotateEvents(events, configs, [ALICE]);
-      expect((result as any).attendees).toHaveLength(1);
-      expect((result as any).attendees[0].email).toBe(ALICE.email);
-      expect((result as any).attendees[0].responseStatus).toBe('accepted');
+      expect(result.attendees).toHaveLength(1);
+      expect(result.attendees![0].email).toBe(ALICE.email);
+      expect(result.attendees![0].responseStatus).toBe('accepted');
     });
 
     it('adds multiple assigned people to an event', () => {
       const events = [makeEvent()];
-      const configs = { 'cal-work': { assignments: [ALICE.email, BOB.email] } } as any;
+      const configs = { 'cal-work': makeConfig({ assignments: [ALICE.email, BOB.email] }) };
       const [result] = annotateEvents(events, configs, [ALICE, BOB]);
-      expect((result as any).attendees).toHaveLength(2);
-      expect((result as any).attendees[0].email).toBe(ALICE.email);
-      expect((result as any).attendees[1].email).toBe(BOB.email);
+      expect(result.attendees).toHaveLength(2);
+      expect(result.attendees![0].email).toBe(ALICE.email);
+      expect(result.attendees![1].email).toBe(BOB.email);
     });
 
     it('does not add the assigned person as a duplicate if already an attendee', () => {
       const existing = { email: ALICE.email, displayName: 'Alice', responseStatus: 'accepted' };
       const events = [makeEvent({ attendees: [existing] })];
-      const configs = { 'cal-work': { assignments: [ALICE.email] } } as any;
+      const configs = { 'cal-work': makeConfig({ assignments: [ALICE.email] }) };
       const [result] = annotateEvents(events, configs, [ALICE]);
       expect(result.attendees).toHaveLength(1);
     });
 
     it('does nothing if the assigned email does not match any person in peopleDB', () => {
       const events = [makeEvent()];
-      const configs = { 'cal-work': { assignments: ['ghost@example.com'] } } as any as any;
+      const configs = { 'cal-work': makeConfig({ assignments: ['ghost@example.com'] }) };
       const [result] = annotateEvents(events, configs, [ALICE]);
-      expect((result as any).attendees).toBeUndefined();
+      expect(result.attendees).toBeUndefined();
     });
   });
 
@@ -112,8 +122,8 @@ describe('annotateEvents', () => {
     it('adds every person in peopleDB as an attendee for #allfamily events', () => {
       const events = [makeEvent({ description: 'Birthday party! #allfamily' })];
       const [result] = annotateEvents(events, {}, [ALICE, BOB]);
-      expect((result as any).attendees).toHaveLength(2);
-      const emails = (result as any).attendees.map((a: any) => a.email);
+      expect(result.attendees).toHaveLength(2);
+      const emails = result.attendees!.map(a => a.email);
       expect(emails).toContain(ALICE.email);
       expect(emails).toContain(BOB.email);
     });
@@ -128,21 +138,21 @@ describe('annotateEvents', () => {
       const existing = { email: ALICE.email, displayName: 'Alice', responseStatus: 'accepted' };
       const events = [makeEvent({ description: '#allfamily', attendees: [existing] })];
       const [result] = annotateEvents(events, {}, [ALICE, BOB]);
-      const aliceCount = (result as any).attendees.filter((a: any) => a.email === ALICE.email).length;
+      const aliceCount = result.attendees!.filter(a => a.email === ALICE.email).length;
       expect(aliceCount).toBe(1);
-      expect((result as any).attendees).toHaveLength(2); // Alice (existing) + Bob
+      expect(result.attendees).toHaveLength(2); // Alice (existing) + Bob
     });
 
     it('leaves events without #allfamily untouched', () => {
       const events = [makeEvent({ description: 'Regular meeting' })];
       const [result] = annotateEvents(events, {}, [ALICE, BOB]);
-      expect((result as any).attendees).toBeUndefined();
+      expect(result.attendees).toBeUndefined();
     });
   });
 
   it('does not mutate the original event objects', () => {
     const original = makeEvent({ summary: 'Original' });
-    annotateEvents([original], { 'cal-work': { emoji: '💼' } } as any, []);
+    annotateEvents([original], { 'cal-work': makeConfig({ emoji: '💼' }) }, []);
     expect(original.summary).toBe('Original');
   });
 });
@@ -151,18 +161,18 @@ describe('annotateEvents', () => {
 
 describe('filterHiddenAttendees', () => {
   it('removes attendees whose person record has show: false (including alternate emails)', () => {
-    const hiddenAlice = { ...ALICE, show: false, alternateEmails: ['alice@alternate.com'] };
+    const hiddenAlice: Person = { ...ALICE, show: false, alternateEmails: ['alice@alternate.com'] };
     const events = [makeEvent({ attendees: [{ email: 'alice@alternate.com' }] })];
     const [result] = filterHiddenAttendees(events, [hiddenAlice]);
-    expect((result as any).attendees).toHaveLength(0);
+    expect(result.attendees).toHaveLength(0);
   });
 
   it('removes attendees whose person record has show: false', () => {
-    const hiddenBob = { ...BOB, show: false };
+    const hiddenBob: Person = { ...BOB, show: false };
     const events = [makeEvent({ attendees: [{ email: ALICE.email }, { email: BOB.email }] })];
     const [result] = filterHiddenAttendees(events, [ALICE, hiddenBob]);
-    expect((result as any).attendees).toHaveLength(1);
-    expect((result as any).attendees[0].email).toBe(ALICE.email);
+    expect(result.attendees).toHaveLength(1);
+    expect(result.attendees![0].email).toBe(ALICE.email);
   });
 
   it('keeps attendees who are visible (show: true)', () => {
@@ -178,20 +188,20 @@ describe('filterHiddenAttendees', () => {
   });
 
   it('deduplicates attendees when called (handles post-merge cleanup)', () => {
-    const CHARLIE = { email: 'charlie@primary.com', name: 'Charlie', alternateEmails: ['charlie@work.com'] };
+    const CHARLIE: Person = { email: 'charlie@primary.com', name: 'Charlie', initials: 'CH', color: '#888888', show: true, alternateEmails: ['charlie@work.com'] };
     const attendees = [{ email: 'charlie@primary.com' }, { email: 'charlie@work.com' }];
     const events = [makeEvent({ attendees })];
-    
-    const [result] = filterHiddenAttendees(events, [CHARLIE as any]);
-    
-    expect((result as any).attendees).toHaveLength(1);
-    expect((result as any).attendees[0].email).toBe('charlie@primary.com');
+
+    const [result] = filterHiddenAttendees(events, [CHARLIE]);
+
+    expect(result.attendees).toHaveLength(1);
+    expect(result.attendees![0].email).toBe('charlie@primary.com');
   });
 
   it('returns events without attendees unchanged', () => {
     const events = [makeEvent()];
     const [result] = filterHiddenAttendees(events, [ALICE]);
-    expect((result as any).attendees).toBeUndefined();
+    expect(result.attendees).toBeUndefined();
   });
 });
 
@@ -205,33 +215,32 @@ describe('cleanupHiddenEvents', () => {
     const freshDate = new Date();
     freshDate.setMonth(now.getMonth() - 1); // 1 month ago (not expired)
 
-    const configs = {
-      'cal-1': {
+    const configs: Record<string, CalendarConfig> = {
+      'cal-1': makeConfig({
+        id: 'cal-1',
         hiddenEvents: [
           { id: 'old-evt', expiry: oldDate.toISOString() },
           { id: 'fresh-evt', expiry: freshDate.toISOString() }
         ]
-      }
-    } as any;
+      })
+    };
 
     const result = cleanupHiddenEvents(configs, 6);
     expect(result['cal-1'].hiddenEvents).toHaveLength(1);
-    expect((result['cal-1'].hiddenEvents![0] as any).id).toBe('fresh-evt');
+    expect((result['cal-1'].hiddenEvents![0] as HiddenEvent).id).toBe('fresh-evt');
   });
 
   it('keeps legacy string IDs (backwards compatibility)', () => {
-    const configs = {
-      'cal-1': {
-        hiddenEvents: ['legacy-id']
-      }
-    } as any;
+    const configs: Record<string, CalendarConfig> = {
+      'cal-1': makeConfig({ id: 'cal-1', hiddenEvents: ['legacy-id'] })
+    };
 
     const result = cleanupHiddenEvents(configs, 6);
     expect(result['cal-1'].hiddenEvents).toContain('legacy-id');
   });
 
   it('returns the exact same object if no changes are made (pure function optimization)', () => {
-    const configs = { 'cal-1': { hiddenEvents: [] } } as any;
+    const configs: Record<string, CalendarConfig> = { 'cal-1': makeConfig({ id: 'cal-1', hiddenEvents: [] }) };
     const result = cleanupHiddenEvents(configs, 6);
     expect(result).toBe(configs);
   });
