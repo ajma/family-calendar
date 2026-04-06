@@ -2,7 +2,10 @@ import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret';
 
 export type { AuthenticatedRequest };
 
@@ -39,28 +42,15 @@ async function identifyUser(req: AuthenticatedRequest): Promise<boolean> {
         return false;
     }
 
-    const cfJwt = req.headers['cf-access-jwt-assertion'] as string;
     const cfEmail = req.headers['cf-access-authenticated-user-email'] as string;
 
-    if (cfJwt || cfEmail) {
-        let email = cfEmail;
-        
-        // Prefer extracting email from the JWT if available
-        if (cfJwt) {
-            try {
-                const decoded = jwt.decode(cfJwt) as { email?: string };
-                if (decoded?.email) {
-                    email = decoded.email;
-                }
-            } catch (e) {
-                console.warn('Failed to decode Cloudflare JWT header');
-            }
-        }
-
-        if (email) {
-            req.user = { email };
-            return true;
-        }
+    // Trust only the cf-access-authenticated-user-email header set by Cloudflare
+    // after it verifies the JWT at the edge. We don't verify the JWT ourselves
+    // since we'd need Cloudflare's public keys, and the header is sufficient
+    // when traffic is routed through Cloudflare Access.
+    if (cfEmail) {
+        req.user = { email: cfEmail };
+        return true;
     }
     
     return false;

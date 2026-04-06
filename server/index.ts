@@ -33,8 +33,8 @@ app.use('/api/calendar', calendarRoutes);
 // ─── Static frontend ─────────────────────────────────────────────────────────
 app.get('/env-config.js', (req: Request, res: Response) => {
     res.type('.js');
-    res.send(`window._env_ = { 
-        GOOGLE_CLIENT_ID: "${process.env.GOOGLE_CLIENT_ID || ''}"
+    res.send(`window._env_ = {
+        GOOGLE_CLIENT_ID: ${JSON.stringify(process.env.GOOGLE_CLIENT_ID || '')}
     };`);
 });
 

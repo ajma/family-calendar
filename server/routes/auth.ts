@@ -6,7 +6,10 @@ import { authenticateSession, optionalAuthenticateSession, AuthenticatedRequest 
 import { AuthExchangeResponse } from '../../common/types';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret';
 
 const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
